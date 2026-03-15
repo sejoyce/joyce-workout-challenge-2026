@@ -48,25 +48,30 @@ const getPhase = (week) => {
 };
 
 // ── Challenge dates ───────────────────────────
-// Week 1 starts Mar 22 2025, Week 16 ends Jul 11 2025
-const CHALLENGE_START_MS = Date.UTC(2025, 2, 22); // Mar 22 2025 00:00 UTC
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+// Challenge: Week 1 = Mar 22 2025, Week 16 ends Jul 11 2025
+const CHALLENGE_START = { year: 2025, month: 2, day: 22 }; // month is 0-indexed
+const CHALLENGE_END_DISPLAY = "July 11, 2025";
 
-const formatDate = (ms) => new Date(ms).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+const formatDate = (d) => new Date(d.year, d.month, d.day)
+  .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+const toDateInt = (y, m, d) => y * 10000 + m * 100 + d;
+const CHALLENGE_START_INT = toDateInt(CHALLENGE_START.year, CHALLENGE_START.month, CHALLENGE_START.day);
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+const CHALLENGE_START_DATE = new Date(CHALLENGE_START.year, CHALLENGE_START.month, CHALLENGE_START.day);
 
 const getChallengeStatus = () => {
-  // Use UTC noon on today's date to avoid DST / timezone edge cases
   const now = new Date();
-  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12);
+  const todayInt = toDateInt(now.getFullYear(), now.getMonth(), now.getDate());
 
-  if (todayUTC < CHALLENGE_START_MS) {
-    // Count calendar days until start
-    const msUntil = CHALLENGE_START_MS - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-    const daysUntil = Math.ceil(msUntil / (1000 * 60 * 60 * 24));
+  if (todayInt < CHALLENGE_START_INT) {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysUntil = Math.round((CHALLENGE_START_DATE - today) / (1000 * 60 * 60 * 24));
     return { started: false, week: null, daysUntil };
   }
 
-  const weekNum = Math.min(16, Math.floor((todayUTC - CHALLENGE_START_MS) / MS_PER_WEEK) + 1);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekNum = Math.min(16, Math.floor((today - CHALLENGE_START_DATE) / MS_PER_WEEK) + 1);
   return { started: true, week: weekNum, daysUntil: 0 };
 };
 
@@ -341,7 +346,7 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>
-              16-Week Consistency Challenge · {formatDate(CHALLENGE_START_MS)} – {formatDate(Date.UTC(2025, 6, 11))}
+              16-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {CHALLENGE_END_DISPLAY}
             </p>
             {challengeStarted && (
               <span style={{
