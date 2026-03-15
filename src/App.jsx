@@ -19,18 +19,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ─────────────────────────────────────────────
-//  App config
+//  Helpers
 // ─────────────────────────────────────────────
-const DEFAULT_MEMBERS = [
-  { id: 1, name: "Member 1"},
-  { id: 2, name: "Member 2" },
-  { id: 3, name: "Member 3" },
-  { id: 4, name: "Member 4" },
-  { id: 5, name: "Member 5" },
-  { id: 6, name: "Member 6" },
-  { id: 7, name: "Member 7" },
-];
-
 const TOTAL_WEEKS = 12;
 
 const getPhase = (week) => {
@@ -39,25 +29,48 @@ const getPhase = (week) => {
   return { name: "Peak", color: "#E05C5C", desc: "Final push!" };
 };
 
-const calculatePoints = (log) => {
-  if (!log) return 0;
+// Each member has goals: [{ id, label, target }]
+// Log structure per member per week: { goalProgress: { goalId: count }, buddy: bool }
+// hitGoal = all goals met
+
+const allGoalsMet = (member, weekLog) => {
+  if (!member.goals?.length) return false;
+  const progress = weekLog?.goalProgress || {};
+  return member.goals.every((g) => (progress[g.id] || 0) >= g.target);
+};
+
+const calculatePoints = (member, weekLog) => {
+  if (!weekLog) return 0;
   let pts = 0;
-  if (log.completed) pts += 3;
-  if (log.hitGoal) pts += 5;
-  if (log.buddy) pts += 2;
+  if (allGoalsMet(member, weekLog)) pts += 5;
+  if (weekLog.buddy) pts += 2;
   return pts;
 };
+
+const DEFAULT_GOALS = () => [{ id: "g1", label: "Workouts", target: 3 }];
+
+const DEFAULT_MEMBERS = [
+  { id: 1, name: "Dad", goals: DEFAULT_GOALS() },
+  { id: 2, name: "Mom", goals: DEFAULT_GOALS() },
+  { id: 3, name: "Sarah", goals: DEFAULT_GOALS() },
+  { id: 4, name: "Daniel", goals: DEFAULT_GOALS() },
+  { id: 5, name: "Nora", goals: DEFAULT_GOALS() },
+  { id: 6, name: "Emma", goals: DEFAULT_GOALS() },
+  { id: 7, name: "Stephen", goals: DEFAULT_GOALS() },
+];
 
 const buildDefaultLogs = (memberList) => {
   const initial = {};
   memberList.forEach((m) => {
     initial[m.id] = {};
     for (let w = 1; w <= TOTAL_WEEKS; w++) {
-      initial[m.id][w] = { completed: false, hitGoal: false, buddy: false };
+      initial[m.id][w] = { goalProgress: {}, buddy: false };
     }
   });
   return initial;
 };
+
+const newGoalId = () => `g${Date.now()}`;
 
 // ─────────────────────────────────────────────
 //  Component
@@ -67,60 +80,43 @@ export default function App() {
   const [members, setMembers] = useState(DEFAULT_MEMBERS);
   const [logs, setLogs] = useState(() => buildDefaultLogs(DEFAULT_MEMBERS));
   const [activeTab, setActiveTab] = useState("log");
-  const [editingNames, setEditingNames] = useState(false);
-  const [nameInputs, setNameInputs] = useState(DEFAULT_MEMBERS.map((m) => m.name));
+  const [editingSetup, setEditingSetup] = useState(false);
+  // setupDraft: per-member editable copy { name, goals: [{id, label, target}] }
+  const [setupDraft, setSetupDraft] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
-  const remoteUpdate = useRef(false); // prevents save loop when receiving remote changes
+  const remoteUpdate = useRef(false);
 
-  // ── Real-time listeners ──────────────────────
+  // ── Firebase listeners ───────────────────────
   useEffect(() => {
-    // Listen to logs document
     const unsubLogs = onSnapshot(doc(db, "challenge", "logs"), (snap) => {
-      if (snap.exists()) {
-        remoteUpdate.current = true;
-        setLogs(snap.data());
-      }
+      if (snap.exists()) { remoteUpdate.current = true; setLogs(snap.data()); }
     });
-
-    // Listen to members document
     const unsubMembers = onSnapshot(doc(db, "challenge", "members"), (snap) => {
       if (snap.exists()) {
         const m = snap.data().list;
-        if (m) {
-          remoteUpdate.current = true;
-          setMembers(m);
-          setNameInputs(m.map((x) => x.name));
-        }
+        if (m) { remoteUpdate.current = true; setMembers(m); }
       }
     });
-
-    // Listen to week document
     const unsubWeek = onSnapshot(doc(db, "challenge", "week"), (snap) => {
       if (snap.exists() && snap.data().current) {
-        remoteUpdate.current = true;
-        setCurrentWeek(snap.data().current);
+        remoteUpdate.current = true; setCurrentWeek(snap.data().current);
       }
     });
-
-    // Mark as loaded after first fetch attempt
     Promise.all([
       getDoc(doc(db, "challenge", "logs")),
       getDoc(doc(db, "challenge", "members")),
       getDoc(doc(db, "challenge", "week")),
     ]).finally(() => setLoaded(true));
-
     return () => { unsubLogs(); unsubMembers(); unsubWeek(); };
   }, []);
 
-  // ── Save logs to Firestore when they change ──
   useEffect(() => {
     if (!loaded) return;
     if (remoteUpdate.current) { remoteUpdate.current = false; return; }
     setDoc(doc(db, "challenge", "logs"), logs).catch(() => {});
   }, [logs, loaded]);
 
-  // ── Save current week ────────────────────────
   useEffect(() => {
     if (!loaded) return;
     if (remoteUpdate.current) { remoteUpdate.current = false; return; }
@@ -129,42 +125,108 @@ export default function App() {
 
   const phase = getPhase(currentWeek);
 
-  const toggleLog = (memberId, field) => {
+  // ── Log actions ──────────────────────────────
+  const updateGoalProgress = (memberId, goalId, delta) => {
     setLogs((prev) => {
       const memberLogs = prev[memberId] || {};
-      const weekLog = memberLogs[currentWeek] || { completed: false, hitGoal: false, buddy: false };
+      const weekLog = memberLogs[currentWeek] || { goalProgress: {}, buddy: false };
+      const current = weekLog.goalProgress?.[goalId] || 0;
+      const newCount = Math.max(0, current + delta);
       return {
         ...prev,
-        [memberId]: { ...memberLogs, [currentWeek]: { ...weekLog, [field]: !weekLog[field] } },
+        [memberId]: {
+          ...memberLogs,
+          [currentWeek]: {
+            ...weekLog,
+            goalProgress: { ...weekLog.goalProgress, [goalId]: newCount },
+          },
+        },
       };
     });
   };
 
-  const getMemberTotal = (memberId) => {
+  const toggleBuddy = (memberId) => {
+    setLogs((prev) => {
+      const memberLogs = prev[memberId] || {};
+      const weekLog = memberLogs[currentWeek] || { goalProgress: {}, buddy: false };
+      return {
+        ...prev,
+        [memberId]: { ...memberLogs, [currentWeek]: { ...weekLog, buddy: !weekLog.buddy } },
+      };
+    });
+  };
+
+  // ── Scoring ──────────────────────────────────
+  const getMemberTotal = (member) => {
     let total = 0;
-    for (let w = 1; w <= TOTAL_WEEKS; w++) total += calculatePoints((logs[memberId] || {})[w]);
+    for (let w = 1; w <= TOTAL_WEEKS; w++) {
+      total += calculatePoints(member, (logs[member.id] || {})[w]);
+    }
     return total;
   };
 
-  const getWeekPoints = (memberId, week) => calculatePoints((logs[memberId] || {})[week]);
+  const getWeekPoints = (member, week) => calculatePoints(member, (logs[member.id] || {})[week]);
 
-  const maxPossible = TOTAL_WEEKS * 10;
+  const maxPossible = TOTAL_WEEKS * 7;
 
   const leaderboard = [...members]
-    .map((m) => ({ ...m, total: getMemberTotal(m.id) }))
+    .map((m) => ({ ...m, total: getMemberTotal(m) }))
     .sort((a, b) => b.total - a.total);
 
   const familyAvgPct = Math.round(
     (leaderboard.reduce((sum, m) => sum + m.total, 0) / (members.length * maxPossible)) * 100
   );
 
-  const commitNameEdits = async () => {
-    const updated = members.map((m, i) => ({
+  // ── Setup editing ────────────────────────────
+  const startEditing = () => {
+    setSetupDraft(members.map((m) => ({
       ...m,
-      name: nameInputs[i] || m.name,
+      goals: (m.goals || DEFAULT_GOALS()).map((g) => ({ ...g })),
+    })));
+    setEditingSetup(true);
+  };
+
+  const updateDraftName = (i, val) => {
+    setSetupDraft((d) => d.map((m, idx) => idx === i ? { ...m, name: val } : m));
+  };
+
+  const updateDraftGoalLabel = (mi, gi, val) => {
+    setSetupDraft((d) => d.map((m, idx) => {
+      if (idx !== mi) return m;
+      return { ...m, goals: m.goals.map((g, gIdx) => gIdx === gi ? { ...g, label: val } : g) };
+    }));
+  };
+
+  const updateDraftGoalTarget = (mi, gi, val) => {
+    setSetupDraft((d) => d.map((m, idx) => {
+      if (idx !== mi) return m;
+      return { ...m, goals: m.goals.map((g, gIdx) => gIdx === gi ? { ...g, target: Math.max(1, parseInt(val) || 1) } : g) };
+    }));
+  };
+
+  const addGoal = (mi) => {
+    setSetupDraft((d) => d.map((m, idx) => {
+      if (idx !== mi) return m;
+      return { ...m, goals: [...m.goals, { id: newGoalId(), label: "New goal", target: 3 }] };
+    }));
+  };
+
+  const removeGoal = (mi, gi) => {
+    setSetupDraft((d) => d.map((m, idx) => {
+      if (idx !== mi) return m;
+      if (m.goals.length <= 1) return m; // keep at least one
+      return { ...m, goals: m.goals.filter((_, gIdx) => gIdx !== gi) };
+    }));
+  };
+
+  const commitSetup = async () => {
+    const updated = setupDraft.map((m) => ({
+      ...m,
+      name: m.name || "Member",
+      goals: m.goals.map((g) => ({ ...g, label: g.label || "Goal", target: g.target || 1 })),
     }));
     setMembers(updated);
-    setEditingNames(false);
+    setEditingSetup(false);
     try {
       await setDoc(doc(db, "challenge", "members"), { list: updated });
       setSaveStatus("✓ Saved & synced");
@@ -187,6 +249,47 @@ export default function App() {
       </div>
     );
   }
+
+  // ── Stepper component ────────────────────────
+  const Stepper = ({ value, onDecrement, onIncrement, label, target, done }) => {
+    const pct = Math.min(100, Math.round((value / target) * 100));
+    return (
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <span style={{ fontSize: 13, color: done ? "#7FB069" : "#9DB890", fontWeight: done ? 600 : 400 }}>
+            {label} {done && "✓"}
+          </span>
+          <span style={{ fontSize: 12, fontFamily: "monospace", color: done ? "#7FB069" : "#C8E6B0" }}>
+            {value} / {target}
+          </span>
+        </div>
+        <div style={{ background: "#0F1B0D", borderRadius: 6, height: 7, overflow: "hidden", marginBottom: 7 }}>
+          <div style={{
+            height: "100%", borderRadius: 6, transition: "width 0.35s ease, background 0.35s ease",
+            background: done ? "linear-gradient(90deg, #3A7A20, #7FB069)" : "linear-gradient(90deg, #2A5A3A, #4A8A55)",
+            width: `${pct}%`,
+          }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={onDecrement} disabled={value === 0} style={{
+            width: 28, height: 28, borderRadius: 6, border: "1px solid #3A5A2A",
+            background: value === 0 ? "#1A2E15" : "#2A4A1E",
+            color: value === 0 ? "#3A5A2A" : "#7FB069",
+            fontSize: 16, cursor: value === 0 ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>−</button>
+          <span style={{ fontSize: 12, color: "#5A7A50", flex: 1, textAlign: "center" }}>
+            {done ? "Done!" : value === 0 ? `Log a ${label.toLowerCase()}` : `${target - value} more`}
+          </span>
+          <button onClick={onIncrement} style={{
+            width: 28, height: 28, borderRadius: 6, border: "1px solid #3A6A2A",
+            background: "#2A4A1E", color: "#7FB069", fontSize: 16, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>+</button>
+        </div>
+      </div>
+    );
+  };
 
   // ── UI ───────────────────────────────────────
   return (
@@ -218,8 +321,6 @@ export default function App() {
               borderRadius: 20, padding: "2px 10px", fontSize: 11, fontFamily: "monospace",
             }}>● LIVE</span>
           </div>
-
-          {/* Week selector */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, color: "#9DB890" }}>WEEK</span>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -268,24 +369,33 @@ export default function App() {
         {activeTab === "log" && (
           <div>
             <p style={{ color: "#6A8A60", fontSize: 13, marginBottom: 20, marginTop: 0 }}>
-              Check off what each person accomplished this week. Updates sync instantly to all devices.
+              Track progress toward each goal. All goals must be hit to unlock the 5 pts.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {members.map((member) => {
-                const wLog = (logs[member.id] || {})[currentWeek] || { completed: false, hitGoal: false, buddy: false };
-                const pts = calculatePoints(wLog);
+                const weekLog = (logs[member.id] || {})[currentWeek] || { goalProgress: {}, buddy: false };
+                const goals = member.goals || DEFAULT_GOALS();
+                const allMet = allGoalsMet(member, weekLog);
+                const pts = calculatePoints(member, weekLog);
+                const metCount = goals.filter((g) => (weekLog.goalProgress?.[g.id] || 0) >= g.target).length;
+
                 return (
                   <div key={member.id} style={{
                     background: "#1A2E15", borderRadius: 14,
-                    border: "1px solid #2A3F22", overflow: "hidden",
+                    border: allMet ? "1px solid #3A6A2A" : "1px solid #2A3F22",
+                    overflow: "hidden", transition: "border-color 0.3s",
                   }}>
+                    {/* Header */}
                     <div style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "14px 18px", borderBottom: "1px solid #2A3F22",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 16, color: "#C8E6B0" }}>{member.name}</div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 16, color: "#C8E6B0" }}>{member.name}</div>
+                        <div style={{ fontSize: 12, color: allMet ? "#7FB069" : "#5A7A50", marginTop: 2 }}>
+                          {allMet
+                            ? "All goals hit! 🎉 +5 pts unlocked"
+                            : `${metCount} / ${goals.length} goals complete`}
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -295,29 +405,46 @@ export default function App() {
                         <div style={{ fontSize: 11, color: "#5A7A50" }}>this week</div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px" }}>
-                      {[
-                        { key: "completed", label: "Completed a workout", pts: "+3" },
-                        { key: "hitGoal", label: "Hit weekly goal", pts: "+5" },
-                        { key: "buddy", label: "Worked out with a buddy", pts: "+2" },
-                      ].map(({ key, label, pts: p }) => (
-                        <label key={key} style={{
-                          display: "flex", alignItems: "center", gap: 10,
-                          cursor: "pointer", padding: "8px 10px", borderRadius: 8,
-                          background: wLog[key] ? "#2A4A1E" : "transparent",
-                          border: `1px solid ${wLog[key] ? "#3A6A2A" : "transparent"}`,
-                          transition: "all 0.15s",
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={!!wLog[key]}
-                            onChange={() => toggleLog(member.id, key)}
-                            style={{ accentColor: "#7FB069", width: 16, height: 16, cursor: "pointer" }}
+
+                    {/* Goals */}
+                    <div style={{ padding: "14px 18px", borderBottom: "1px solid #2A3F22" }}>
+                      {goals.map((goal) => {
+                        const count = weekLog.goalProgress?.[goal.id] || 0;
+                        const done = count >= goal.target;
+                        return (
+                          <Stepper
+                            key={goal.id}
+                            label={goal.label}
+                            target={goal.target}
+                            value={count}
+                            done={done}
+                            onDecrement={() => updateGoalProgress(member.id, goal.id, -1)}
+                            onIncrement={() => updateGoalProgress(member.id, goal.id, 1)}
                           />
-                          <span style={{ fontSize: 13, color: wLog[key] ? "#C8E6B0" : "#6A8A60", flex: 1 }}>{label}</span>
-                          <span style={{ fontSize: 11, fontFamily: "monospace", color: wLog[key] ? "#7FB069" : "#3A5A2A" }}>{p}</span>
-                        </label>
-                      ))}
+                        );
+                      })}
+                    </div>
+
+                    {/* Buddy */}
+                    <div style={{ padding: "10px 14px" }}>
+                      <label style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        cursor: "pointer", padding: "8px 10px", borderRadius: 8,
+                        background: weekLog.buddy ? "#2A4A1E" : "transparent",
+                        border: `1px solid ${weekLog.buddy ? "#3A6A2A" : "transparent"}`,
+                        transition: "all 0.15s",
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={!!weekLog.buddy}
+                          onChange={() => toggleBuddy(member.id)}
+                          style={{ accentColor: "#7FB069", width: 16, height: 16, cursor: "pointer" }}
+                        />
+                        <span style={{ fontSize: 13, color: weekLog.buddy ? "#C8E6B0" : "#6A8A60", flex: 1 }}>
+                          Worked out with a buddy
+                        </span>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: weekLog.buddy ? "#7FB069" : "#3A5A2A" }}>+2</span>
+                      </label>
                     </div>
                   </div>
                 );
@@ -401,11 +528,9 @@ export default function App() {
                     display: "grid", gridTemplateColumns: `110px repeat(${TOTAL_WEEKS}, 1fr)`,
                     padding: "8px 14px", borderBottom: "1px solid #1A2E15", minWidth: 560,
                   }}>
-                    <div style={{ fontSize: 13, color: "#C8E6B0", display: "flex", alignItems: "center", gap: 6 }}>
-                      {m.name.split(" ")[0]}
-                    </div>
+                    <div style={{ fontSize: 13, color: "#C8E6B0" }}>{m.name.split(" ")[0]}</div>
                     {Array.from({ length: TOTAL_WEEKS }, (_, i) => {
-                      const wp = getWeekPoints(m.id, i + 1);
+                      const wp = getWeekPoints(m, i + 1);
                       return (
                         <div key={i} style={{
                           textAlign: "center", fontSize: 12, fontFamily: "monospace",
@@ -425,15 +550,15 @@ export default function App() {
           <div>
             <div style={{ marginBottom: 28 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <h3 style={{ margin: 0, color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>MEMBERS</h3>
+                <h3 style={{ margin: 0, color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>MEMBERS & GOALS</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {saveStatus && <span style={{ color: "#7FB069", fontSize: 13 }}>{saveStatus}</span>}
-                  {!editingNames
-                    ? <button onClick={() => setEditingNames(true)} style={{
+                  {!editingSetup
+                    ? <button onClick={startEditing} style={{
                       background: "#2A4A1E", border: "1px solid #3A6A2A", color: "#7FB069",
                       borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 13, fontFamily: "inherit",
-                    }}>Edit Members</button>
-                    : <button onClick={commitNameEdits} style={{
+                    }}>Edit</button>
+                    : <button onClick={commitSetup} style={{
                       background: "#7FB069", border: "none", color: "#0F1B0D",
                       borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 13,
                       fontWeight: 700, fontFamily: "inherit",
@@ -441,42 +566,106 @@ export default function App() {
                   }
                 </div>
               </div>
-              {editingNames && (
-                <p style={{ color: "#5A7A50", fontSize: 12, margin: "0 0 12px" }}>
-                  Edit names below. "Save & Sync" pushes changes to all devices instantly.
-                </p>
-              )}
-              {members.map((m, i) => (
+
+              {/* ── VIEW MODE ── */}
+              {!editingSetup && members.map((m) => (
                 <div key={m.id} style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
-                  borderBottom: "1px solid #2A3F22",
+                  padding: "12px 0", borderBottom: "1px solid #2A3F22",
                 }}>
-                  {editingNames ? (
-                    <input
-                      value={nameInputs[i]}
-                      onChange={(e) => { const n = [...nameInputs]; n[i] = e.target.value; setNameInputs(n); }}
-                      placeholder="Name"
-                      style={{
-                        background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
-                        padding: "6px 12px", color: "#C8E6B0", fontSize: 14, fontFamily: "inherit", flex: 1,
-                      }}
-                    />
-                  ) : (
-                    <div style={{ flex: 1 }}>
-                      <div style={{ color: "#C8E6B0", fontSize: 14 }}>{m.name}</div>
-                    </div>
-                  )}
+                  <div style={{ color: "#C8E6B0", fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{m.name}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {(m.goals || DEFAULT_GOALS()).map((g) => (
+                      <span key={g.id} style={{
+                        background: "#2A4A1E", border: "1px solid #3A6A2A",
+                        borderRadius: 8, padding: "3px 10px",
+                        fontSize: 12, color: "#7FB069", fontFamily: "monospace",
+                      }}>
+                        {g.label}: {g.target}x/wk
+                      </span>
+                    ))}
+                  </div>
                 </div>
               ))}
+
+              {/* ── EDIT MODE ── */}
+              {editingSetup && (
+                <div>
+                  <p style={{ color: "#5A7A50", fontSize: 12, margin: "0 0 16px" }}>
+                    Set names and goals. Each person can have multiple goals — all must be hit to earn 5 pts.
+                  </p>
+                  {setupDraft.map((m, mi) => (
+                    <div key={m.id} style={{
+                      background: "#0F1B0D", borderRadius: 12, border: "1px solid #2A3F22",
+                      padding: "14px 16px", marginBottom: 12,
+                    }}>
+                      {/* Name */}
+                      <input
+                        value={m.name}
+                        onChange={(e) => updateDraftName(mi, e.target.value)}
+                        placeholder="Name"
+                        style={{
+                          background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
+                          padding: "7px 12px", color: "#C8E6B0", fontSize: 15,
+                          fontFamily: "inherit", width: "100%", marginBottom: 12, boxSizing: "border-box",
+                          fontWeight: 600,
+                        }}
+                      />
+
+                      {/* Goals */}
+                      <div style={{ fontSize: 11, color: "#5A7A50", letterSpacing: "0.5px", marginBottom: 8 }}>GOALS</div>
+                      {m.goals.map((g, gi) => (
+                        <div key={g.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                          <input
+                            value={g.label}
+                            onChange={(e) => updateDraftGoalLabel(mi, gi, e.target.value)}
+                            placeholder="Goal name"
+                            style={{
+                              background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
+                              padding: "6px 10px", color: "#C8E6B0", fontSize: 13,
+                              fontFamily: "inherit", flex: 1,
+                            }}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            max="14"
+                            value={g.target}
+                            onChange={(e) => updateDraftGoalTarget(mi, gi, e.target.value)}
+                            style={{
+                              background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
+                              padding: "6px 8px", color: "#7FB069", fontSize: 14,
+                              fontFamily: "monospace", width: 56, textAlign: "center",
+                            }}
+                          />
+                          <span style={{ fontSize: 11, color: "#5A7A50", whiteSpace: "nowrap" }}>/ wk</span>
+                          {m.goals.length > 1 && (
+                            <button onClick={() => removeGoal(mi, gi)} style={{
+                              background: "none", border: "1px solid #5A2A2A", borderRadius: 6,
+                              color: "#A05050", fontSize: 14, cursor: "pointer",
+                              width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>×</button>
+                          )}
+                        </div>
+                      ))}
+
+                      <button onClick={() => addGoal(mi)} style={{
+                        background: "none", border: "1px dashed #3A5A2A", borderRadius: 8,
+                        color: "#5A8A50", fontSize: 13, cursor: "pointer",
+                        padding: "6px 12px", fontFamily: "inherit", width: "100%", marginTop: 4,
+                      }}>+ Add goal</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* Scoring Guide */}
             <div style={{ background: "#1A2E15", borderRadius: 14, border: "1px solid #2A3F22", padding: "18px 20px" }}>
               <h3 style={{ margin: "0 0 16px", color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>📋 SCORING GUIDE</h3>
               {[
-                { pts: "3 pts", action: "Complete any workout", color: "#7FB069" },
-                { pts: "5 pts", action: "Hit your personal weekly goal", color: "#7FB069" },
+                { pts: "5 pts", action: "Hit all weekly goals", color: "#7FB069" },
                 { pts: "2 pts", action: "Worked out with a buddy", color: "#E8A838" },
-                { pts: "10 pts", action: "Maximum possible per week", color: "#E05C5C" },
+                { pts: "7 pts", action: "Maximum possible per week", color: "#E05C5C" },
               ].map(({ pts, action, color }) => (
                 <div key={action} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -488,11 +677,12 @@ export default function App() {
               ))}
             </div>
 
+            {/* Phases */}
             <div style={{ background: "#1A2E15", borderRadius: 14, border: "1px solid #2A3F22", padding: "18px 20px", marginTop: 14 }}>
               <h3 style={{ margin: "0 0 14px", color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>🗓 CHALLENGE PHASES</h3>
               {[
                 { weeks: "Weeks 1–4", name: "Foundation", color: "#7FB069", desc: "Build the habit. Just show up." },
-                { weeks: "Weeks 5–8", name: "Build", color: "#E8A838", desc: "Increase your goal by 10%. Push harder." },
+                { weeks: "Weeks 5–8", name: "Build", color: "#E8A838", desc: "Increase your goals by 10%. Push harder." },
                 { weeks: "Weeks 9–12", name: "Peak", color: "#E05C5C", desc: "Final push. Give it everything." },
               ].map(({ weeks, name, color, desc }) => (
                 <div key={name} style={{
