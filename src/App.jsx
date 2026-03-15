@@ -55,7 +55,7 @@ const CHALLENGE_END   = new Date(2025, 6, 12, 23, 59, 59); // Jul 12 2025
 const getCurrentChallengeWeek = () => {
   const now = new Date();
   if (now < CHALLENGE_START) return null; // not started
-  if (now > CHALLENGE_END) return 12;     // finished
+  if (now > CHALLENGE_END) return 16;     // finished
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   return Math.min(16, Math.floor((now - CHALLENGE_START) / msPerWeek) + 1);
 };
@@ -207,13 +207,13 @@ export default function App() {
   }, [currentWeek, loaded]);
 
   const phase = getPhase(currentWeek);
-  const liveWeek = getCurrentChallengeWeek();   // null = not started, 1-12 = active
+  const liveWeek = getCurrentChallengeWeek();   // null = not started, 1–16 = active/finished
   const daysUntil = getDaysUntilStart();
   const notStarted = liveWeek === null;
 
-  // On first load (before Firebase), default to live week if challenge is active
+  // On first load, jump to live week if challenge is active
   useEffect(() => {
-    if (loaded && liveWeek && currentWeek === 1) setCurrentWeek(liveWeek);
+    if (loaded && liveWeek !== null) setCurrentWeek(liveWeek);
   }, [loaded]);
 
   // ── Log actions ──────────────────────────────
