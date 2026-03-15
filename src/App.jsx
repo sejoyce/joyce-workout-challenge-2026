@@ -668,77 +668,67 @@ export default function App() {
                       {/* Goal rows */}
                       <div style={{ fontSize: 11, color: "#5A7A50", letterSpacing: "0.5px", marginBottom: 8 }}>GOALS</div>
 
-                      {/* Column headers */}
-                      <div style={{
-                        display: "grid", gridTemplateColumns: "1fr 100px 70px 60px 28px",
-                        gap: 6, marginBottom: 4, padding: "0 2px",
-                      }}>
-                        {["GOAL NAME", "UNIT", "TARGET", "STEP", ""].map((h) => (
-                          <div key={h} style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>{h}</div>
-                        ))}
-                      </div>
-
                       {m.goals.map((g, gi) => (
                         <div key={g.id} style={{
-                          display: "grid", gridTemplateColumns: "1fr 100px 70px 60px 28px",
-                          gap: 6, marginBottom: 8, alignItems: "center",
+                          background: "#1A2E15", borderRadius: 8, border: "1px solid #2A3F22",
+                          padding: "10px 12px", marginBottom: 8,
                         }}>
-                          {/* Label */}
-                          <input
-                            value={g.label}
-                            onChange={(e) => updateDraftGoal(mi, gi, "label", e.target.value)}
-                            placeholder="Goal name"
-                            style={{ ...inputStyle, fontSize: 13 }}
-                          />
+                          {/* Row 1: goal name + remove button */}
+                          <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                            <input
+                              value={g.label}
+                              onChange={(e) => updateDraftGoal(mi, gi, "label", e.target.value)}
+                              placeholder="Goal name"
+                              style={{ ...inputStyle, fontSize: 13, flex: 1 }}
+                            />
+                            {m.goals.length > 1 && (
+                              <button onClick={() => removeGoal(mi, gi)} style={{
+                                background: "none", border: "1px solid #5A2A2A", borderRadius: 6,
+                                color: "#A05050", fontSize: 16, cursor: "pointer", width: 30, height: 30,
+                                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                              }}>×</button>
+                            )}
+                          </div>
 
-                          {/* Unit selector */}
-                          <select
-                            value={g.unit}
-                            onChange={(e) => updateDraftGoal(mi, gi, "unit", e.target.value)}
-                            style={{
-                              ...inputStyle, fontSize: 12, cursor: "pointer",
-                              appearance: "none", WebkitAppearance: "none",
-                            }}
-                          >
-                            {UNIT_OPTIONS.map((u) => (
-                              <option key={u.value} value={u.value}>{u.label}</option>
-                            ))}
-                          </select>
-
-                          {/* Target */}
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={g.target}
-                            onChange={(e) => updateDraftGoal(mi, gi, "target", e.target.value)}
-                            onBlur={(e) => {
-                              const val = parseFloat(e.target.value);
-                              updateDraftGoal(mi, gi, "target", isNaN(val) || val <= 0 ? 1 : val);
-                            }}
-                            style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
-                          />
-
-                          {/* Step */}
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={g.step}
-                            onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
-                            onBlur={(e) => {
-                              const val = parseFloat(e.target.value);
-                              updateDraftGoal(mi, gi, "step", isNaN(val) || val <= 0 ? 1 : val);
-                            }}
-                            style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
-                          />
-
-                          {/* Remove */}
-                          {m.goals.length > 1 ? (
-                            <button onClick={() => removeGoal(mi, gi)} style={{
-                              background: "none", border: "1px solid #5A2A2A", borderRadius: 6,
-                              color: "#A05050", fontSize: 16, cursor: "pointer", width: 28, height: 28,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}>×</button>
-                          ) : <div />}
+                          {/* Row 2: unit / target / step */}
+                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
+                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>UNIT</span>
+                              <select
+                                value={g.unit}
+                                onChange={(e) => updateDraftGoal(mi, gi, "unit", e.target.value)}
+                                style={{ ...inputStyle, fontSize: 12, cursor: "pointer", appearance: "none", WebkitAppearance: "none" }}
+                              >
+                                {UNIT_OPTIONS.map((u) => (
+                                  <option key={u.value} value={u.value}>{u.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 70px" }}>
+                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>TARGET / WK</span>
+                              <input
+                                type="text" inputMode="decimal" value={g.target}
+                                onChange={(e) => updateDraftGoal(mi, gi, "target", e.target.value)}
+                                onBlur={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  updateDraftGoal(mi, gi, "target", isNaN(val) || val <= 0 ? 1 : val);
+                                }}
+                                style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 60px" }}>
+                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>STEP SIZE</span>
+                              <input
+                                type="text" inputMode="decimal" value={g.step}
+                                onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
+                                onBlur={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  updateDraftGoal(mi, gi, "step", isNaN(val) || val <= 0 ? 1 : val);
+                                }}
+                                style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       ))}
 
