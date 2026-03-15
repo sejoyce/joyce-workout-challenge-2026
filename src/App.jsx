@@ -25,7 +25,7 @@ const TOTAL_WEEKS = 12;
 
 const UNIT_OPTIONS = [
   { value: "workouts", label: "Workouts", defaultStep: 1, defaultTarget: 3 },
-  { value: "miles",    label: "Miles",    defaultStep: 0.5, defaultTarget: 10 },
+  { value: "miles",    label: "Miles",    defaultStep: 1, defaultTarget: 10 },
   { value: "minutes",  label: "Minutes",  defaultStep: 15,  defaultTarget: 150 },
   { value: "steps",    label: "Steps",    defaultStep: 1000, defaultTarget: 50000 },
   { value: "classes",  label: "Classes",  defaultStep: 1,   defaultTarget: 2 },
@@ -642,21 +642,27 @@ export default function App() {
 
                           {/* Target */}
                           <input
-                            type="number"
-                            min="0.5"
-                            step={g.step || 1}
+                            type="text"
+                            inputMode="decimal"
                             value={g.target}
-                            onChange={(e) => updateDraftGoal(mi, gi, "target", parseFloat(e.target.value) || 1)}
+                            onChange={(e) => updateDraftGoal(mi, gi, "target", e.target.value)}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateDraftGoal(mi, gi, "target", isNaN(val) || val <= 0 ? 1 : val);
+                            }}
                             style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
                           />
 
                           {/* Step */}
                           <input
-                            type="number"
-                            min="0.1"
-                            step="0.1"
+                            type="text"
+                            inputMode="decimal"
                             value={g.step}
-                            onChange={(e) => updateDraftGoal(mi, gi, "step", parseFloat(e.target.value) || 1)}
+                            onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateDraftGoal(mi, gi, "step", isNaN(val) || val <= 0 ? 1 : val);
+                            }}
                             style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
                           />
 
