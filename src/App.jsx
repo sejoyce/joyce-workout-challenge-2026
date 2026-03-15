@@ -52,6 +52,8 @@ const getPhase = (week) => {
 const CHALLENGE_START_MS = Date.UTC(2025, 2, 22); // Mar 22 2025 00:00 UTC
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
+const formatDate = (ms) => new Date(ms).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
 const getChallengeStatus = () => {
   // Use UTC noon on today's date to avoid DST / timezone edge cases
   const now = new Date();
@@ -339,7 +341,7 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>
-              16-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {formatDate(CHALLENGE_END)}
+              16-Week Consistency Challenge · {formatDate(CHALLENGE_START_MS)} – {formatDate(Date.UTC(2025, 6, 11))}
             </p>
             {challengeStarted && (
               <span style={{
