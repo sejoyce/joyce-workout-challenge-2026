@@ -47,26 +47,26 @@ const getPhase = (week) => {
   return                 { name: "Peak",        color: "#E05C5C", desc: "Final push!" };
 };
 
-// Challenge runs week of Mar 22 – week ending Jul 11
-// Use local noon to avoid timezone edge cases
-const CHALLENGE_START = new Date(2025, 2, 22, 12, 0, 0);  // Mar 22 2025
-const CHALLENGE_END   = new Date(2025, 6, 12, 23, 59, 59); // Jul 12 2025
+// ── Challenge dates ───────────────────────────
+// Week 1 starts Mar 22 2025, Week 16 ends Jul 11 2025
+const CHALLENGE_START_MS = Date.UTC(2025, 2, 22); // Mar 22 2025 00:00 UTC
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 
-const getCurrentChallengeWeek = () => {
+const getChallengeStatus = () => {
+  // Use UTC noon on today's date to avoid DST / timezone edge cases
   const now = new Date();
-  if (now < CHALLENGE_START) return null; // not started
-  if (now > CHALLENGE_END) return 16;     // finished
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  return Math.min(16, Math.floor((now - CHALLENGE_START) / msPerWeek) + 1);
-};
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12);
 
-const getDaysUntilStart = () => {
-  const now = new Date();
-  const diff = CHALLENGE_START - now;
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-};
+  if (todayUTC < CHALLENGE_START_MS) {
+    // Count calendar days until start
+    const msUntil = CHALLENGE_START_MS - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysUntil = Math.ceil(msUntil / (1000 * 60 * 60 * 24));
+    return { started: false, week: null, daysUntil };
+  }
 
-const formatDate = (d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const weekNum = Math.min(16, Math.floor((todayUTC - CHALLENGE_START_MS) / MS_PER_WEEK) + 1);
+  return { started: true, week: weekNum, daysUntil: 0 };
+};
 
 const allGoalsMet = (member, weekLog) => {
   if (!member.goals?.length) return false;
@@ -177,20 +177,11 @@ export default function App() {
         if (m) { remoteUpdate.current = true; setMembers(m); }
       }
     });
-    const unsubWeek = onSnapshot(doc(db, "challenge", "week"), (snap) => {
-      if (snap.exists() && snap.data().current) {
-        // Don't restore a saved week if the challenge hasn't started
-        if (getCurrentChallengeWeek() !== null) {
-          remoteUpdate.current = true; setCurrentWeek(snap.data().current);
-        }
-      }
-    });
     Promise.all([
       getDoc(doc(db, "challenge", "logs")),
       getDoc(doc(db, "challenge", "members")),
-      getDoc(doc(db, "challenge", "week")),
     ]).finally(() => setLoaded(true));
-    return () => { unsubLogs(); unsubMembers(); unsubWeek(); };
+    return () => { unsubLogs(); unsubMembers(); };
   }, []);
 
   useEffect(() => {
@@ -199,22 +190,15 @@ export default function App() {
     setDoc(doc(db, "challenge", "logs"), logs).catch(() => {});
   }, [logs, loaded]);
 
+  // Auto-jump to live week once loaded
   useEffect(() => {
     if (!loaded) return;
-    if (remoteUpdate.current) { remoteUpdate.current = false; return; }
-    if (getCurrentChallengeWeek() === null) return; // don't persist week before challenge starts
-    setDoc(doc(db, "challenge", "week"), { current: currentWeek }).catch(() => {});
-  }, [currentWeek, loaded]);
-
-  const phase = getPhase(currentWeek);
-  const liveWeek = getCurrentChallengeWeek();   // null = not started, 1–16 = active/finished
-  const daysUntil = getDaysUntilStart();
-  const notStarted = liveWeek === null;
-
-  // On first load, jump to live week if challenge is active
-  useEffect(() => {
-    if (loaded && liveWeek !== null) setCurrentWeek(liveWeek);
+    const { started, week } = getChallengeStatus();
+    if (started && week) setCurrentWeek(week);
   }, [loaded]);
+
+  const { started: challengeStarted, week: liveWeek, daysUntil } = getChallengeStatus();
+  const phase = getPhase(currentWeek);
 
   // ── Log actions ──────────────────────────────
   const updateGoalProgress = (memberId, goalId, delta) => {
@@ -357,7 +341,7 @@ export default function App() {
             <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>
               16-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {formatDate(CHALLENGE_END)}
             </p>
-            {!notStarted && (
+            {challengeStarted && (
               <span style={{
                 background: "#2A4A1E", border: "1px solid #3A6A2A", color: "#7FB069",
                 borderRadius: 20, padding: "2px 10px", fontSize: 11, fontFamily: "monospace",
@@ -377,7 +361,7 @@ export default function App() {
               {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => {
                 const ph = getPhase(w);
                 const isSelected = currentWeek === w;
-                const isLive = liveWeek === w;
+                const isLive = challengeStarted && liveWeek === w;
                 return (
                   <div key={w} style={{ position: "relative" }}>
                     {isLive && (
@@ -419,42 +403,24 @@ export default function App() {
         </div>
 
         {/* ── Pre-challenge banner ── */}
-        {notStarted && (
+        {!challengeStarted && (
           <div style={{
-            background: "linear-gradient(135deg, #1A2E15, #0F2010)",
-            border: "1px solid #4A7A30", borderRadius: 14,
-            padding: "20px 24px", marginBottom: 24,
-            position: "relative", overflow: "hidden",
+            background: "#2A0A0A",
+            border: "1px solid #8B2020",
+            borderRadius: 12,
+            padding: "16px 20px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
           }}>
-            <div style={{
-              position: "absolute", top: -30, right: -30, width: 140, height: 140,
-              borderRadius: "50%", background: "radial-gradient(circle, #7FB06922, transparent)",
-            }} />
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, position: "relative" }}>
-              <span style={{ fontSize: 32, lineHeight: 1 }}>🌱</span>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 17, color: "#C8E6B0", marginBottom: 4 }}>
-                  Challenge starts in {daysUntil} day{daysUntil !== 1 ? "s" : ""}!
-                </div>
-                <div style={{ fontSize: 13, color: "#9DB890", lineHeight: 1.6, marginBottom: 14 }}>
-                  The 12-week Family Fitness Challenge kicks off on{" "}
-                  <strong style={{ color: "#C8E6B0" }}>{formatDate(CHALLENGE_START)}</strong>.
-                  Now is the perfect time to head to the{" "}
-                  <strong style={{ color: "#C8E6B0" }}>⚙️ Setup tab</strong> and set your personal goals
-                  — the more specific, the better!
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {[
-                    "🏃 Set your weekly workout target",
-                    "🎯 Choose your units (miles, minutes, etc.)",
-                    "👥 Add multiple goals if you want",
-                  ].map((tip) => (
-                    <span key={tip} style={{
-                      background: "#2A4A1E", border: "1px solid #3A6A2A",
-                      borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#7FB069",
-                    }}>{tip}</span>
-                  ))}
-                </div>
+            <span style={{ fontSize: 24, lineHeight: 1 }}>🚨</span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#F4A0A0", marginBottom: 3 }}>
+                The challenge begins March 22!
+              </div>
+              <div style={{ fontSize: 13, color: "#C07070", lineHeight: 1.5 }}>
+                Head to <strong style={{ color: "#F4A0A0" }}>⚙️ Setup</strong> to set your personal goals before the challenge starts.
               </div>
             </div>
           </div>
