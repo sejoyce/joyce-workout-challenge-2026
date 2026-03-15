@@ -21,7 +21,7 @@ const db = getFirestore(app);
 // ─────────────────────────────────────────────
 //  Constants
 // ─────────────────────────────────────────────
-const TOTAL_WEEKS = 12;
+const TOTAL_WEEKS = 16;
 
 const UNIT_OPTIONS = [
   { value: "workouts", label: "Workouts", defaultStep: 1, defaultTarget: 3 },
@@ -42,9 +42,9 @@ const formatValue = (value, unit) => {
 };
 
 const getPhase = (week) => {
-  if (week <= 4) return { name: "Foundation", color: "#7FB069", desc: "Build the habit" };
-  if (week <= 8) return { name: "Build", color: "#E8A838", desc: "Push harder" };
-  return { name: "Peak", color: "#E05C5C", desc: "Final push!" };
+  if (week <= 5)  return { name: "Foundation", color: "#7FB069", desc: "Build the habit" };
+  if (week <= 11) return { name: "Build",       color: "#E8A838", desc: "Push harder" };
+  return                 { name: "Peak",        color: "#E05C5C", desc: "Final push!" };
 };
 
 // Challenge runs week of Mar 22 – week ending Jul 11
@@ -57,7 +57,7 @@ const getCurrentChallengeWeek = () => {
   if (now < CHALLENGE_START) return null; // not started
   if (now > CHALLENGE_END) return 12;     // finished
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  return Math.min(12, Math.floor((now - CHALLENGE_START) / msPerWeek) + 1);
+  return Math.min(16, Math.floor((now - CHALLENGE_START) / msPerWeek) + 1);
 };
 
 const getDaysUntilStart = () => {
@@ -179,7 +179,10 @@ export default function App() {
     });
     const unsubWeek = onSnapshot(doc(db, "challenge", "week"), (snap) => {
       if (snap.exists() && snap.data().current) {
-        remoteUpdate.current = true; setCurrentWeek(snap.data().current);
+        // Don't restore a saved week if the challenge hasn't started
+        if (getCurrentChallengeWeek() !== null) {
+          remoteUpdate.current = true; setCurrentWeek(snap.data().current);
+        }
       }
     });
     Promise.all([
@@ -199,6 +202,7 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     if (remoteUpdate.current) { remoteUpdate.current = false; return; }
+    if (getCurrentChallengeWeek() === null) return; // don't persist week before challenge starts
     setDoc(doc(db, "challenge", "week"), { current: currentWeek }).catch(() => {});
   }, [currentWeek, loaded]);
 
@@ -241,7 +245,7 @@ export default function App() {
     return total;
   };
   const getWeekPoints = (member, week) => calculatePoints(member, (logs[member.id] || {})[week]);
-  const maxPossible = TOTAL_WEEKS * 7;
+  const maxPossible = TOTAL_WEEKS * 7; // 16 weeks × 7 pts max = 112
 
   const leaderboard = [...members]
     .map((m) => ({ ...m, total: getMemberTotal(m) }))
@@ -820,9 +824,9 @@ export default function App() {
             <div style={{ background: "#1A2E15", borderRadius: 14, border: "1px solid #2A3F22", padding: "18px 20px", marginTop: 14 }}>
               <h3 style={{ margin: "0 0 14px", color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>🗓 CHALLENGE PHASES</h3>
               {[
-                { weeks: "Weeks 1–4", name: "Foundation", color: "#7FB069", desc: "Build the habit. Just show up." },
-                { weeks: "Weeks 5–8", name: "Build", color: "#E8A838", desc: "Increase your goals by 10%. Push harder." },
-                { weeks: "Weeks 9–12", name: "Peak", color: "#E05C5C", desc: "Final push. Give it everything." },
+                { weeks: "Weeks 1–5",   name: "Foundation", color: "#7FB069", desc: "Build the habit. Just show up." },
+                { weeks: "Weeks 6–11",  name: "Build",       color: "#E8A838", desc: "Increase your goals by 10%. Push harder." },
+                { weeks: "Weeks 12–16", name: "Peak",        color: "#E05C5C", desc: "Final push. Give it everything." },
               ].map(({ weeks, name, color, desc }) => (
                 <div key={name} style={{
                   display: "flex", gap: 14, padding: "10px 0",
