@@ -7,12 +7,12 @@ import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "firebase/firestor
 import { useState, useEffect, useRef } from "react";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
@@ -22,13 +22,13 @@ const db = getFirestore(app);
 //  App config
 // ─────────────────────────────────────────────
 const DEFAULT_MEMBERS = [
-  { id: 1, name: "Member 1", sport: "Running / Hiking / Rock Climbing", emoji: "🧗" },
-  { id: 2, name: "Member 2", sport: "Running / Hiking / Rock Climbing", emoji: "🏃" },
-  { id: 3, name: "Member 3", sport: "Weightlifting / Walking", emoji: "🏋️" },
-  { id: 4, name: "Member 4", sport: "Workout Classes", emoji: "🤸" },
-  { id: 5, name: "Member 5", sport: "Hiking / Walking", emoji: "🥾" },
-  { id: 6, name: "Member 6", sport: "Hiking / Walking", emoji: "🚶" },
-  { id: 7, name: "Member 7", sport: "Activity", emoji: "🏅" },
+  { id: 1, name: "Member 1"},
+  { id: 2, name: "Member 2" },
+  { id: 3, name: "Member 3" },
+  { id: 4, name: "Member 4" },
+  { id: 5, name: "Member 5" },
+  { id: 6, name: "Member 6" },
+  { id: 7, name: "Member 7" },
 ];
 
 const TOTAL_WEEKS = 12;
@@ -69,8 +69,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("log");
   const [editingNames, setEditingNames] = useState(false);
   const [nameInputs, setNameInputs] = useState(DEFAULT_MEMBERS.map((m) => m.name));
-  const [sportInputs, setSportInputs] = useState(DEFAULT_MEMBERS.map((m) => m.sport));
-  const [emojiInputs, setEmojiInputs] = useState(DEFAULT_MEMBERS.map((m) => m.emoji));
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const remoteUpdate = useRef(false); // prevents save loop when receiving remote changes
@@ -93,8 +91,6 @@ export default function App() {
           remoteUpdate.current = true;
           setMembers(m);
           setNameInputs(m.map((x) => x.name));
-          setSportInputs(m.map((x) => x.sport));
-          setEmojiInputs(m.map((x) => x.emoji));
         }
       }
     });
@@ -166,8 +162,6 @@ export default function App() {
     const updated = members.map((m, i) => ({
       ...m,
       name: nameInputs[i] || m.name,
-      sport: sportInputs[i] || m.sport,
-      emoji: emojiInputs[i] || m.emoji,
     }));
     setMembers(updated);
     setEditingNames(false);
@@ -290,10 +284,8 @@ export default function App() {
                       padding: "14px 18px", borderBottom: "1px solid #2A3F22",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 24 }}>{member.emoji}</span>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 16, color: "#C8E6B0" }}>{member.name}</div>
-                          <div style={{ fontSize: 12, color: "#5A7A50" }}>{member.sport}</div>
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -370,7 +362,6 @@ export default function App() {
                     padding: "14px 18px", display: "flex", alignItems: "center", gap: 14,
                   }}>
                     <span style={{ fontSize: 22, width: 32, textAlign: "center" }}>{medals[idx] || `#${idx + 1}`}</span>
-                    <span style={{ fontSize: 22 }}>{member.emoji}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: "#C8E6B0", marginBottom: 4 }}>{member.name}</div>
                       <div style={{ background: "#0F1B0D", borderRadius: 6, height: 6, overflow: "hidden" }}>
@@ -411,7 +402,7 @@ export default function App() {
                     padding: "8px 14px", borderBottom: "1px solid #1A2E15", minWidth: 560,
                   }}>
                     <div style={{ fontSize: 13, color: "#C8E6B0", display: "flex", alignItems: "center", gap: 6 }}>
-                      {m.emoji} {m.name.split(" ")[0]}
+                      {m.name.split(" ")[0]}
                     </div>
                     {Array.from({ length: TOTAL_WEEKS }, (_, i) => {
                       const wp = getWeekPoints(m.id, i + 1);
@@ -452,7 +443,7 @@ export default function App() {
               </div>
               {editingNames && (
                 <p style={{ color: "#5A7A50", fontSize: 12, margin: "0 0 12px" }}>
-                  Edit emoji, name, and sport. "Save & Sync" pushes changes to all devices instantly.
+                  Edit names below. "Save & Sync" pushes changes to all devices instantly.
                 </p>
               )}
               {members.map((m, i) => (
@@ -461,43 +452,19 @@ export default function App() {
                   borderBottom: "1px solid #2A3F22",
                 }}>
                   {editingNames ? (
-                    <>
-                      <input
-                        value={emojiInputs[i]}
-                        onChange={(e) => { const n = [...emojiInputs]; n[i] = e.target.value; setEmojiInputs(n); }}
-                        style={{
-                          background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
-                          padding: "6px 6px", color: "#C8E6B0", fontSize: 18, width: 48,
-                          textAlign: "center", fontFamily: "inherit",
-                        }}
-                      />
-                      <input
-                        value={nameInputs[i]}
-                        onChange={(e) => { const n = [...nameInputs]; n[i] = e.target.value; setNameInputs(n); }}
-                        placeholder="Name"
-                        style={{
-                          background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
-                          padding: "6px 12px", color: "#C8E6B0", fontSize: 14, fontFamily: "inherit", flex: 1,
-                        }}
-                      />
-                      <input
-                        value={sportInputs[i]}
-                        onChange={(e) => { const n = [...sportInputs]; n[i] = e.target.value; setSportInputs(n); }}
-                        placeholder="Sport / Activity"
-                        style={{
-                          background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
-                          padding: "6px 12px", color: "#C8E6B0", fontSize: 13, fontFamily: "inherit", flex: 1.5,
-                        }}
-                      />
-                    </>
+                    <input
+                      value={nameInputs[i]}
+                      onChange={(e) => { const n = [...nameInputs]; n[i] = e.target.value; setNameInputs(n); }}
+                      placeholder="Name"
+                      style={{
+                        background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
+                        padding: "6px 12px", color: "#C8E6B0", fontSize: 14, fontFamily: "inherit", flex: 1,
+                      }}
+                    />
                   ) : (
-                    <>
-                      <span style={{ fontSize: 22, width: 36 }}>{m.emoji}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: "#C8E6B0", fontSize: 14 }}>{m.name}</div>
-                        <div style={{ color: "#5A7A50", fontSize: 12 }}>{m.sport}</div>
-                      </div>
-                    </>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: "#C8E6B0", fontSize: 14 }}>{m.name}</div>
+                    </div>
                   )}
                 </div>
               ))}
