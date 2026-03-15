@@ -48,9 +48,9 @@ const getPhase = (week) => {
 };
 
 // ── Challenge dates ───────────────────────────
-// Challenge: Week 1 = Mar 22 2025, Week 16 ends Jul 11 2025
-const CHALLENGE_START = { year: 2025, month: 2, day: 22 }; // month is 0-indexed
-const CHALLENGE_END_DISPLAY = "July 11, 2025";
+// Challenge: Week 1 = Mar 22 2026, Week 16 ends Jul 11 2026
+const CHALLENGE_START = { year: 2026, month: 2, day: 22 }; // month is 0-indexed
+const CHALLENGE_END_DISPLAY = "July 11, 2026";
 
 const formatDate = (d) => new Date(d.year, d.month, d.day)
   .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -74,8 +74,6 @@ const getChallengeStatus = () => {
   const weekNum = Math.min(16, Math.floor((today - CHALLENGE_START_DATE) / MS_PER_WEEK) + 1);
   return { started: true, week: weekNum, daysUntil: 0 };
 };
-
-console.log("Challenge status:", getChallengeStatus(), "Today:", new Date().toDateString());
 
 const allGoalsMet = (member, weekLog) => {
   if (!member.goals?.length) return false;
@@ -426,7 +424,7 @@ export default function App() {
             <span style={{ fontSize: 24, lineHeight: 1 }}>🚨</span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: "#F4A0A0", marginBottom: 3 }}>
-                The challenge begins March 22!
+                The challenge begins March 22, 2026!
               </div>
               <div style={{ fontSize: 13, color: "#C07070", lineHeight: 1.5 }}>
                 Head to <strong style={{ color: "#F4A0A0" }}>⚙️ Setup</strong> to set your personal goals before the challenge starts.
