@@ -171,6 +171,10 @@ export default function App() {
   const [setupDraft, setSetupDraft] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  const [myId, setMyId] = useState(() => {
+    const saved = localStorage.getItem("fc-my-id");
+    return saved ? parseInt(saved) : null;
+  });
   const remoteUpdate = useRef(false);
 
   // ── Firebase ─────────────────────────────────
@@ -206,6 +210,16 @@ export default function App() {
 
   const { started: challengeStarted, week: liveWeek, daysUntil } = getChallengeStatus();
   const phase = getPhase(currentWeek);
+
+  const selectMe = (id) => {
+    setMyId(id);
+    localStorage.setItem("fc-my-id", id);
+  };
+
+  // Sort so "my" card is always first in the log
+  const sortedMembers = myId
+    ? [...members].sort((a, b) => (a.id === myId ? -1 : b.id === myId ? 1 : 0))
+    : members;
 
   // ── Log actions ──────────────────────────────
   const updateGoalProgress = (memberId, goalId, delta) => {
@@ -436,11 +450,33 @@ export default function App() {
         {/* ── LOG TAB ── */}
         {activeTab === "log" && (
           <div>
+            {/* Who are you? picker */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, color: "#6A8A60", whiteSpace: "nowrap" }}>
+                  {myId ? "Logging as:" : "Who are you?"}
+                </span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {members.map((m) => (
+                    <button key={m.id} onClick={() => selectMe(m.id)} style={{
+                      padding: "4px 12px", borderRadius: 20, fontSize: 13,
+                      cursor: "pointer", fontFamily: "inherit",
+                      border: myId === m.id ? "1px solid #7FB069" : "1px solid #2A3F22",
+                      background: myId === m.id ? "#2A4A1E" : "#1A2E15",
+                      color: myId === m.id ? "#C8E6B0" : "#5A7A50",
+                      fontWeight: myId === m.id ? 600 : 400,
+                      transition: "all 0.15s",
+                    }}>{m.name}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <p style={{ color: "#6A8A60", fontSize: 13, marginBottom: 20, marginTop: 0 }}>
               Log progress toward each goal. All goals must be hit to unlock the 5 pts.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {members.map((member) => {
+              {sortedMembers.map((member) => {
                 const weekLog = (logs[member.id] || {})[currentWeek] || { goalProgress: {}, buddy: false };
                 const goals = member.goals || DEFAULT_GOALS();
                 const allMet = allGoalsMet(member, weekLog);
@@ -459,7 +495,16 @@ export default function App() {
                       padding: "14px 18px", borderBottom: "1px solid #2A3F22",
                     }}>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 16, color: "#C8E6B0" }}>{member.name}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ fontWeight: 600, fontSize: 16, color: "#C8E6B0" }}>{member.name}</div>
+                          {myId === member.id && (
+                            <span style={{
+                              fontSize: 10, color: "#7FB069", background: "#2A4A1E",
+                              border: "1px solid #3A6A2A", borderRadius: 10,
+                              padding: "1px 7px", fontFamily: "monospace", letterSpacing: "0.5px",
+                            }}>you</span>
+                          )}
+                        </div>
                         <div style={{ fontSize: 12, color: allMet ? "#7FB069" : "#5A7A50", marginTop: 2 }}>
                           {allMet ? "All goals hit! 🎉 +5 pts unlocked" : `${metCount} / ${goals.length} goals complete`}
                         </div>
@@ -681,13 +726,18 @@ export default function App() {
                               placeholder="Goal name"
                               style={{ ...inputStyle, fontSize: 13, flex: 1 }}
                             />
-                            {m.goals.length > 1 && (
-                              <button onClick={() => removeGoal(mi, gi)} style={{
-                                background: "none", border: "1px solid #5A2A2A", borderRadius: 6,
-                                color: "#A05050", fontSize: 16, cursor: "pointer", width: 30, height: 30,
+                            <button
+                              onClick={() => removeGoal(mi, gi)}
+                              disabled={m.goals.length <= 1}
+                              style={{
+                                background: "none",
+                                border: `1px solid ${m.goals.length > 1 ? "#5A2A2A" : "#2A2A2A"}`,
+                                borderRadius: 6,
+                                color: m.goals.length > 1 ? "#A05050" : "#3A3A3A",
+                                fontSize: 16, cursor: m.goals.length > 1 ? "pointer" : "not-allowed",
+                                width: 30, height: 30,
                                 display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                               }}>×</button>
-                            )}
                           </div>
 
                           {/* Row 2: unit / target / step */}
