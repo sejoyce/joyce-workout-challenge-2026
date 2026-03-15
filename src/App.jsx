@@ -25,7 +25,7 @@ const TOTAL_WEEKS = 12;
 
 const UNIT_OPTIONS = [
   { value: "workouts", label: "Workouts", defaultStep: 1, defaultTarget: 3 },
-  { value: "miles",    label: "Miles",    defaultStep: 1, defaultTarget: 10 },
+  { value: "miles",    label: "Miles",    defaultStep: 0.5, defaultTarget: 10 },
   { value: "minutes",  label: "Minutes",  defaultStep: 15,  defaultTarget: 150 },
   { value: "steps",    label: "Steps",    defaultStep: 1000, defaultTarget: 50000 },
   { value: "classes",  label: "Classes",  defaultStep: 1,   defaultTarget: 2 },
@@ -46,6 +46,26 @@ const getPhase = (week) => {
   if (week <= 8) return { name: "Build", color: "#E8A838", desc: "Push harder" };
   return { name: "Peak", color: "#E05C5C", desc: "Final push!" };
 };
+
+// Challenge runs Sat Mar 22 – Sat Jul 12 (12 weeks, week starts Saturday)
+const CHALLENGE_START = new Date("2025-03-22T00:00:00");
+const CHALLENGE_END   = new Date("2025-07-12T23:59:59");
+
+const getCurrentChallengeWeek = () => {
+  const now = new Date();
+  if (now < CHALLENGE_START) return null; // not started
+  if (now > CHALLENGE_END) return 12;     // finished
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  return Math.min(12, Math.floor((now - CHALLENGE_START) / msPerWeek) + 1);
+};
+
+const getDaysUntilStart = () => {
+  const now = new Date();
+  const diff = CHALLENGE_START - now;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+};
+
+const formatDate = (d) => d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
 const allGoalsMet = (member, weekLog) => {
   if (!member.goals?.length) return false;
@@ -182,6 +202,14 @@ export default function App() {
   }, [currentWeek, loaded]);
 
   const phase = getPhase(currentWeek);
+  const liveWeek = getCurrentChallengeWeek();   // null = not started, 1-12 = active
+  const daysUntil = getDaysUntilStart();
+  const notStarted = liveWeek === null;
+
+  // On first load (before Firebase), default to live week if challenge is active
+  useEffect(() => {
+    if (loaded && liveWeek && currentWeek === 1) setCurrentWeek(liveWeek);
+  }, [loaded]);
 
   // ── Log actions ──────────────────────────────
   const updateGoalProgress = (memberId, goalId, delta) => {
@@ -321,26 +349,41 @@ export default function App() {
             </h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>12-Week Consistency Challenge · Spring 2025</p>
-            <span style={{
-              background: "#2A4A1E", border: "1px solid #3A6A2A", color: "#7FB069",
-              borderRadius: 20, padding: "2px 10px", fontSize: 11, fontFamily: "monospace",
-            }}>● LIVE</span>
+            <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>
+              12-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {formatDate(CHALLENGE_END)}
+            </p>
+            {!notStarted && (
+              <span style={{
+                background: "#2A4A1E", border: "1px solid #3A6A2A", color: "#7FB069",
+                borderRadius: 20, padding: "2px 10px", fontSize: 11, fontFamily: "monospace",
+              }}>● LIVE</span>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, color: "#9DB890" }}>WEEK</span>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => {
                 const ph = getPhase(w);
+                const isSelected = currentWeek === w;
+                const isLive = liveWeek === w;
                 return (
-                  <button key={w} onClick={() => setCurrentWeek(w)} style={{
-                    width: 32, height: 32, borderRadius: 6,
-                    border: currentWeek === w ? `2px solid ${ph.color}` : "2px solid transparent",
-                    background: currentWeek === w ? ph.color + "33" : "#1A2E15",
-                    color: currentWeek === w ? ph.color : "#6A8A60",
-                    fontSize: 13, fontWeight: currentWeek === w ? 700 : 400,
-                    cursor: "pointer", transition: "all 0.15s",
-                  }}>{w}</button>
+                  <div key={w} style={{ position: "relative" }}>
+                    {isLive && (
+                      <div style={{
+                        position: "absolute", top: -4, right: -4, width: 8, height: 8,
+                        borderRadius: "50%", background: "#7FB069",
+                        boxShadow: "0 0 4px #7FB069", zIndex: 1,
+                      }} />
+                    )}
+                    <button onClick={() => setCurrentWeek(w)} style={{
+                      width: 32, height: 32, borderRadius: 6,
+                      border: isSelected ? `2px solid ${ph.color}` : isLive ? `2px solid #7FB06988` : "2px solid transparent",
+                      background: isSelected ? ph.color + "33" : "#1A2E15",
+                      color: isSelected ? ph.color : isLive ? "#C8E6B0" : "#6A8A60",
+                      fontSize: 13, fontWeight: isSelected || isLive ? 700 : 400,
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}>{w}</button>
+                  </div>
                 );
               })}
             </div>
@@ -367,6 +410,48 @@ export default function App() {
             </button>
           ))}
         </div>
+
+        {/* ── Pre-challenge banner ── */}
+        {notStarted && (
+          <div style={{
+            background: "linear-gradient(135deg, #1A2E15, #0F2010)",
+            border: "1px solid #4A7A30", borderRadius: 14,
+            padding: "20px 24px", marginBottom: 24,
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{
+              position: "absolute", top: -30, right: -30, width: 140, height: 140,
+              borderRadius: "50%", background: "radial-gradient(circle, #7FB06922, transparent)",
+            }} />
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, position: "relative" }}>
+              <span style={{ fontSize: 32, lineHeight: 1 }}>🌱</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 17, color: "#C8E6B0", marginBottom: 4 }}>
+                  Challenge starts in {daysUntil} day{daysUntil !== 1 ? "s" : ""}!
+                </div>
+                <div style={{ fontSize: 13, color: "#9DB890", lineHeight: 1.6, marginBottom: 14 }}>
+                  The 12-week Family Fitness Challenge kicks off on{" "}
+                  <strong style={{ color: "#C8E6B0" }}>{formatDate(CHALLENGE_START)}</strong>.
+                  Now is the perfect time to head to the{" "}
+                  <strong style={{ color: "#C8E6B0" }}>⚙️ Setup tab</strong> and set your personal goals
+                  — the more specific, the better!
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {[
+                    "🏃 Set your weekly workout target",
+                    "🎯 Choose your units (miles, minutes, etc.)",
+                    "👥 Add multiple goals if you want",
+                  ].map((tip) => (
+                    <span key={tip} style={{
+                      background: "#2A4A1E", border: "1px solid #3A6A2A",
+                      borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#7FB069",
+                    }}>{tip}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── LOG TAB ── */}
         {activeTab === "log" && (
