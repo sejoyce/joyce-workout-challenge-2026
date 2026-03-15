@@ -47,9 +47,10 @@ const getPhase = (week) => {
   return { name: "Peak", color: "#E05C5C", desc: "Final push!" };
 };
 
-// Challenge runs Sat Mar 22 – Sat Jul 12 (12 weeks, week starts Saturday)
-const CHALLENGE_START = new Date("2025-03-22T00:00:00");
-const CHALLENGE_END   = new Date("2025-07-12T23:59:59");
+// Challenge runs week of Mar 22 – week ending Jul 11
+// Use local noon to avoid timezone edge cases
+const CHALLENGE_START = new Date(2025, 2, 22, 12, 0, 0);  // Mar 22 2025
+const CHALLENGE_END   = new Date(2025, 6, 12, 23, 59, 59); // Jul 12 2025
 
 const getCurrentChallengeWeek = () => {
   const now = new Date();
@@ -345,12 +346,12 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
             <span style={{ fontSize: 32 }}>🏅</span>
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px", color: "#C8E6B0" }}>
-              Family Fitness Challenge
+              Joyce Family Exercise Challenge
             </h1>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <p style={{ margin: 0, color: "#7FB069", fontSize: 14 }}>
-              12-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {formatDate(CHALLENGE_END)}
+              16-Week Consistency Challenge · {formatDate(CHALLENGE_START)} – {formatDate(CHALLENGE_END)}
             </p>
             {!notStarted && (
               <span style={{
@@ -359,9 +360,16 @@ export default function App() {
               }}>● LIVE</span>
             )}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 13, color: "#9DB890" }}>WEEK</span>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <div style={{ marginTop: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: "#9DB890", whiteSpace: "nowrap" }}>WEEK</span>
+              <span style={{
+                background: phase.color + "22", border: `1px solid ${phase.color}55`,
+                color: phase.color, borderRadius: 20, padding: "3px 12px", fontSize: 12,
+                fontFamily: "monospace", letterSpacing: "1px", whiteSpace: "nowrap",
+              }}>{phase.name.toUpperCase()} · {phase.desc}</span>
+            </div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
               {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => {
                 const ph = getPhase(w);
                 const isSelected = currentWeek === w;
@@ -387,11 +395,6 @@ export default function App() {
                 );
               })}
             </div>
-            <span style={{
-              background: phase.color + "22", border: `1px solid ${phase.color}55`,
-              color: phase.color, borderRadius: 20, padding: "3px 12px", fontSize: 12,
-              fontFamily: "monospace", letterSpacing: "1px",
-            }}>{phase.name.toUpperCase()} · {phase.desc}</span>
           </div>
         </div>
       </div>
