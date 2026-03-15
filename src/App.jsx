@@ -75,6 +75,8 @@ const getChallengeStatus = () => {
   return { started: true, week: weekNum, daysUntil: 0 };
 };
 
+console.log("Challenge status:", getChallengeStatus(), "Today:", new Date().toDateString());
+
 const allGoalsMet = (member, weekLog) => {
   if (!member.goals?.length) return false;
   const progress = weekLog?.goalProgress || {};
