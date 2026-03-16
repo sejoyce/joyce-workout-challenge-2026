@@ -41,6 +41,14 @@ const formatValue = (value, unit) => {
   return value;
 };
 
+// Returns fully formatted value + unit label as a single string (avoids "2h 0m minutes" redundancy)
+const formatWithUnit = (value, unit, customUnit) => {
+  const unitLabel = unit === "custom" ? (customUnit || "units") : getUnitMeta(unit).label.toLowerCase();
+  if (unit === "minutes") return formatValue(value, unit); // already self-labelled (e.g. "2h 30m")
+  if (unit === "steps") return `${formatValue(value, unit)} ${unitLabel}`;
+  return `${formatValue(value, unit)} ${unitLabel}`;
+};
+
 const getPhase = (week) => {
   if (week <= 5)  return { name: "Foundation", color: "#2EC4B6", desc: "Build the habit" };
   if (week <= 11) return { name: "Build",       color: "#E8A838", desc: "Push harder" };
@@ -144,7 +152,7 @@ const GoalStepper = ({ goal, value, effectiveTarget, phase, onDecrement, onIncre
           )}
         </div>
         <span style={{ fontSize: 12, fontFamily: "monospace", color: done ? "#2EC4B6" : "#B0E8E4" }}>
-          {formatValue(value, goal.unit)} / {formatValue(effectiveTarget, goal.unit)} {unitLabel}
+          {formatWithUnit(value, goal.unit, goal.customUnit)} / {formatWithUnit(effectiveTarget, goal.unit, goal.customUnit)}
         </span>
       </div>
       <div style={{ background: "#091A1E", borderRadius: 6, height: 7, overflow: "hidden", marginBottom: 7 }}>
@@ -165,10 +173,10 @@ const GoalStepper = ({ goal, value, effectiveTarget, phase, onDecrement, onIncre
         }}>−</button>
         <span style={{ fontSize: 12, color: "#6ABFBA", flex: 1, textAlign: "center" }}>
           {done
-            ? `Done! (+${goal.step} ${unitLabel})`
+            ? `Done! (+${formatWithUnit(goal.step, goal.unit, goal.customUnit)})`
             : value === 0
-            ? `Log ${unitLabel}`
-            : `${formatValue(effectiveTarget - value, goal.unit)} ${unitLabel} to go`}
+            ? `Log ${goal.unit === "minutes" ? "minutes" : unitLabel}`
+            : `${formatWithUnit(effectiveTarget - value, goal.unit, goal.customUnit)} to go`}
         </span>
         <button onClick={onIncrement} style={{
           width: 28, height: 28, borderRadius: 6, border: "1px solid #3A6A2A",
@@ -714,7 +722,7 @@ export default function App() {
                             background: "#0E3A42", border: "1px solid #3A6A2A", borderRadius: 8,
                             padding: "3px 10px", fontSize: 12, color: "#2EC4B6", fontFamily: "monospace",
                           }}>
-                            {g.label}: {formatValue(g.target, g.unit)} {unitLabel}/wk
+                            {g.label}: {formatWithUnit(g.target, g.unit, g.customUnit)}/wk
                           </span>
                           {(buildTarget || peakTarget) && (
                             <div style={{ display: "flex", gap: 4, paddingLeft: 4 }}>
@@ -723,14 +731,14 @@ export default function App() {
                                   fontSize: 10, fontFamily: "monospace", color: "#E8A838",
                                   background: "#E8A83822", border: "1px solid #E8A83844",
                                   borderRadius: 6, padding: "1px 6px",
-                                }}>Build: {formatValue(buildTarget, g.unit)}</span>
+                                }}>Build: {formatWithUnit(buildTarget, g.unit, g.customUnit)}</span>
                               )}
                               {peakTarget && (
                                 <span style={{
                                   fontSize: 10, fontFamily: "monospace", color: "#E05C5C",
                                   background: "#E05C5C22", border: "1px solid #E05C5C44",
                                   borderRadius: 6, padding: "1px 6px",
-                                }}>Peak: {formatValue(peakTarget, g.unit)}</span>
+                                }}>Peak: {formatWithUnit(peakTarget, g.unit, g.customUnit)}</span>
                               )}
                             </div>
                           )}
@@ -874,10 +882,10 @@ export default function App() {
                               {(g.buildIncrease || g.peakIncrease) && (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end", paddingBottom: 2 }}>
                                   <span style={{ fontSize: 10, color: "#E8A838", fontFamily: "monospace" }}>
-                                    Build → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0), g.unit)}
+                                    Build → {formatWithUnit((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0), g.unit, g.customUnit)}
                                   </span>
                                   <span style={{ fontSize: 10, color: "#E05C5C", fontFamily: "monospace" }}>
-                                    Peak → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) + (parseFloat(g.peakIncrease) || 0), g.unit)}
+                                    Peak → {formatWithUnit((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) + (parseFloat(g.peakIncrease) || 0), g.unit, g.customUnit)}
                                   </span>
                                 </div>
                               )}
