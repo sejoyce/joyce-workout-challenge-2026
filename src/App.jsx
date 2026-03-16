@@ -160,10 +160,10 @@ const GoalStepper = ({ goal, value, effectiveTarget, phase, onDecrement, onIncre
         <button onClick={onDecrement} disabled={value <= 0} style={{
           width: 28, height: 28, borderRadius: 6, border: "1px solid #3A5A2A",
           background: value <= 0 ? "#1A2E15" : "#2A4A1E",
-          color: value <= 0 ? "#3A5A2A" : "#7FB069", fontSize: 16, cursor: value <= 0 ? "not-allowed" : "pointer",
+          color: value <= 0 ? "#6A9A55" : "#7FB069", fontSize: 16, cursor: value <= 0 ? "not-allowed" : "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>−</button>
-        <span style={{ fontSize: 12, color: "#5A7A50", flex: 1, textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: "#8AAF7A", flex: 1, textAlign: "center" }}>
           {done
             ? `Done! (+${goal.step} ${unitLabel})`
             : value === 0
@@ -348,14 +348,14 @@ export default function App() {
     }}>
       <div style={{ fontSize: 32 }}>🏅</div>
       <div style={{ fontSize: 16 }}>Connecting to Firebase…</div>
-      <div style={{ fontSize: 12, color: "#5A7A50" }}>Make sure your firebaseConfig is filled in</div>
+      <div style={{ fontSize: 12, color: "#8AAF7A" }}>Make sure your firebaseConfig is filled in</div>
     </div>
   );
 
   // ── Shared styles ────────────────────────────
   const inputStyle = {
-    background: "#1A2E15", border: "1px solid #3A6A2A", borderRadius: 8,
-    padding: "6px 10px", color: "#C8E6B0", fontFamily: "inherit",
+    background: "#1E3518", border: "1px solid #4A7A3A", borderRadius: 8,
+    padding: "6px 10px", color: "#E0F0D0", fontFamily: "inherit",
   };
 
   // ── Render ───────────────────────────────────
@@ -392,7 +392,7 @@ export default function App() {
           </div>
           <div style={{ marginTop: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "#9DB890", whiteSpace: "nowrap" }}>WEEK</span>
+              <span style={{ fontSize: 13, color: "#B8D4A8", whiteSpace: "nowrap" }}>WEEK</span>
               <span style={{
                 background: phase.color + "22", border: `1px solid ${phase.color}55`,
                 color: phase.color, borderRadius: 20, padding: "3px 12px", fontSize: 12,
@@ -474,7 +474,7 @@ export default function App() {
             {/* Who are you? picker */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 13, color: "#6A8A60", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 13, color: "#8AAF7A", whiteSpace: "nowrap" }}>
                   {myId ? "Logging as:" : "Who are you?"}
                 </span>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -493,7 +493,7 @@ export default function App() {
               </div>
             </div>
 
-            <p style={{ color: "#6A8A60", fontSize: 13, marginBottom: 20, marginTop: 0 }}>
+            <p style={{ color: "#8AAF7A", fontSize: 13, marginBottom: 20, marginTop: 0 }}>
               Log progress toward each goal. All goals must be hit to unlock the 5 pts.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -532,9 +532,9 @@ export default function App() {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontSize: 22, fontWeight: 700, color: "#7FB069", fontFamily: "monospace" }}>
-                          {pts}<span style={{ fontSize: 13, color: "#5A7A50" }}> pts</span>
+                          {pts}<span style={{ fontSize: 13, color: "#8AAF7A" }}> pts</span>
                         </div>
-                        <div style={{ fontSize: 11, color: "#5A7A50" }}>this week</div>
+                        <div style={{ fontSize: 11, color: "#8AAF7A" }}>this week</div>
                       </div>
                     </div>
 
@@ -567,7 +567,7 @@ export default function App() {
                         <span style={{ fontSize: 13, color: weekLog.buddy ? "#C8E6B0" : "#6A8A60", flex: 1 }}>
                           Worked out with a buddy
                         </span>
-                        <span style={{ fontSize: 11, fontFamily: "monospace", color: weekLog.buddy ? "#7FB069" : "#3A5A2A" }}>+2</span>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: weekLog.buddy ? "#7FB069" : "#6A9A55" }}>+2</span>
                       </label>
                     </div>
                   </div>
@@ -585,7 +585,7 @@ export default function App() {
               padding: "18px 20px", marginBottom: 20,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ color: "#9DB890", fontSize: 14 }}>🌿 Family Group Progress</span>
+                <span style={{ color: "#B8D4A8", fontSize: 14 }}>🌿 Family Group Progress</span>
                 <span style={{ fontFamily: "monospace", fontSize: 18, fontWeight: 700, color: familyAvgPct >= 70 ? "#7FB069" : "#E8A838" }}>
                   {familyAvgPct}%
                 </span>
@@ -597,7 +597,7 @@ export default function App() {
                   width: `${Math.min(familyAvgPct, 100)}%`,
                 }} />
               </div>
-              <div style={{ fontSize: 12, color: "#5A7A50", marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: "#8AAF7A", marginTop: 8 }}>
                 {familyAvgPct >= 70 ? "✅ On track for the group reward!" : `Need ${70 - familyAvgPct}% more to unlock the group reward`}
               </div>
             </div>
@@ -625,7 +625,7 @@ export default function App() {
                     </div>
                     <div style={{ textAlign: "right", minWidth: 70 }}>
                       <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: "#7FB069" }}>{member.total}</div>
-                      <div style={{ fontSize: 11, color: "#5A7A50" }}>{pct}% of max</div>
+                      <div style={{ fontSize: 11, color: "#8AAF7A" }}>{pct}% of max</div>
                     </div>
                   </div>
                 );
@@ -633,13 +633,13 @@ export default function App() {
             </div>
 
             <div style={{ marginTop: 24 }}>
-              <h3 style={{ color: "#9DB890", fontSize: 14, marginBottom: 12, letterSpacing: "1px" }}>WEEK-BY-WEEK BREAKDOWN</h3>
+              <h3 style={{ color: "#B8D4A8", fontSize: 14, marginBottom: 12, letterSpacing: "1px" }}>WEEK-BY-WEEK BREAKDOWN</h3>
               <div style={{ background: "#1A2E15", borderRadius: 12, border: "1px solid #2A3F22", overflowX: "auto" }}>
                 <div style={{
                   display: "grid", gridTemplateColumns: `110px repeat(${TOTAL_WEEKS}, 1fr)`,
                   borderBottom: "1px solid #2A3F22", padding: "10px 14px", minWidth: 560,
                 }}>
-                  <div style={{ fontSize: 11, color: "#5A7A50" }}>MEMBER</div>
+                  <div style={{ fontSize: 11, color: "#8AAF7A" }}>MEMBER</div>
                   {Array.from({ length: TOTAL_WEEKS }, (_, i) => (
                     <div key={i} style={{
                       fontSize: 11, color: i + 1 === currentWeek ? "#7FB069" : "#5A7A50",
@@ -674,7 +674,7 @@ export default function App() {
           <div>
             <div style={{ marginBottom: 28 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <h3 style={{ margin: 0, color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>MEMBERS & GOALS</h3>
+                <h3 style={{ margin: 0, color: "#B8D4A8", fontSize: 14, letterSpacing: "1px" }}>MEMBERS & GOALS</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {saveStatus && <span style={{ color: "#7FB069", fontSize: 13 }}>{saveStatus}</span>}
                   {!editingSetup
@@ -736,12 +736,12 @@ export default function App() {
               {/* Edit mode */}
               {editingSetup && (
                 <div>
-                  <p style={{ color: "#5A7A50", fontSize: 12, margin: "0 0 16px" }}>
+                  <p style={{ color: "#8AAF7A", fontSize: 12, margin: "0 0 16px" }}>
                     Set each person's name, goals, units, targets, and step size. All goals must be hit to earn 5 pts.
                   </p>
                   {setupDraft.map((m, mi) => (
                     <div key={m.id} style={{
-                      background: "#0F1B0D", borderRadius: 12, border: "1px solid #2A3F22",
+                      background: "#162810", borderRadius: 12, border: "1px solid #3A5030",
                       padding: "14px 16px", marginBottom: 12,
                     }}>
                       {/* Name */}
@@ -756,11 +756,11 @@ export default function App() {
                       />
 
                       {/* Goal rows */}
-                      <div style={{ fontSize: 11, color: "#5A7A50", letterSpacing: "0.5px", marginBottom: 8 }}>GOALS</div>
+                      <div style={{ fontSize: 11, color: "#8AAF7A", letterSpacing: "0.5px", marginBottom: 8 }}>GOALS</div>
 
                       {m.goals.map((g, gi) => (
                         <div key={g.id} style={{
-                          background: "#1A2E15", borderRadius: 8, border: "1px solid #2A3F22",
+                          background: "#1E3018", borderRadius: 8, border: "1px solid #3A5030",
                           padding: "10px 12px", marginBottom: 8,
                         }}>
                           {/* Row 1: goal name + remove button */}
@@ -788,7 +788,7 @@ export default function App() {
                           {/* Row 2: unit / target / step */}
                           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
-                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>UNIT</span>
+                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>UNIT</span>
                               <select
                                 value={g.unit}
                                 onChange={(e) => updateDraftGoal(mi, gi, "unit", e.target.value)}
@@ -800,7 +800,7 @@ export default function App() {
                               </select>
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 70px" }}>
-                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>TARGET / WK</span>
+                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>TARGET / WK</span>
                               <input
                                 type="text" inputMode="decimal" value={g.target}
                                 onChange={(e) => updateDraftGoal(mi, gi, "target", e.target.value)}
@@ -812,7 +812,7 @@ export default function App() {
                               />
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 60px" }}>
-                              <span style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px" }}>STEP SIZE</span>
+                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>STEP SIZE</span>
                               <input
                                 type="text" inputMode="decimal" value={g.step}
                                 onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
@@ -827,12 +827,12 @@ export default function App() {
 
                           {/* Row 3: phase scaling (optional) */}
                           <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #2A3F22" }}>
-                            <div style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px", marginBottom: 6 }}>
-                              PHASE SCALING <span style={{ color: "#2A4A2A" }}>— optional</span>
+                            <div style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px", marginBottom: 6 }}>
+                              PHASE SCALING <span style={{ color: "#7A9A65" }}>— optional</span>
                             </div>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                               <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
-                                <span style={{ fontSize: 10, color: "#8A6820", letterSpacing: "0.3px" }}>
+                                <span style={{ fontSize: 10, color: "#C8962A", letterSpacing: "0.3px" }}>
                                   +BUILD INCREASE
                                 </span>
                                 <input
@@ -848,7 +848,7 @@ export default function App() {
                                 />
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
-                                <span style={{ fontSize: 10, color: "#8A3030", letterSpacing: "0.3px" }}>
+                                <span style={{ fontSize: 10, color: "#D06060", letterSpacing: "0.3px" }}>
                                   +PEAK INCREASE
                                 </span>
                                 <input
@@ -885,7 +885,7 @@ export default function App() {
                             const realGi = m.goals.findIndex((x) => x.id === g.id);
                             return (
                               <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                                <span style={{ fontSize: 12, color: "#5A7A50", whiteSpace: "nowrap" }}>
+                                <span style={{ fontSize: 12, color: "#8AAF7A", whiteSpace: "nowrap" }}>
                                   "{g.label}" unit label:
                                 </span>
                                 <input
@@ -913,7 +913,7 @@ export default function App() {
 
             {/* Scoring guide */}
             <div style={{ background: "#1A2E15", borderRadius: 14, border: "1px solid #2A3F22", padding: "18px 20px" }}>
-              <h3 style={{ margin: "0 0 16px", color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>📋 SCORING GUIDE</h3>
+              <h3 style={{ margin: "0 0 16px", color: "#B8D4A8", fontSize: 14, letterSpacing: "1px" }}>📋 SCORING GUIDE</h3>
               {[
                 { pts: "5 pts", action: "Hit all weekly goals", color: "#7FB069" },
                 { pts: "2 pts", action: "Worked out with a buddy", color: "#E8A838" },
@@ -923,7 +923,7 @@ export default function App() {
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   padding: "8px 0", borderBottom: "1px solid #2A3F2266",
                 }}>
-                  <span style={{ color: "#9DB890", fontSize: 13 }}>{action}</span>
+                  <span style={{ color: "#B8D4A8", fontSize: 13 }}>{action}</span>
                   <span style={{ fontFamily: "monospace", fontWeight: 700, color, fontSize: 14 }}>{pts}</span>
                 </div>
               ))}
@@ -931,7 +931,7 @@ export default function App() {
 
             {/* Phases */}
             <div style={{ background: "#1A2E15", borderRadius: 14, border: "1px solid #2A3F22", padding: "18px 20px", marginTop: 14 }}>
-              <h3 style={{ margin: "0 0 14px", color: "#9DB890", fontSize: 14, letterSpacing: "1px" }}>🗓 CHALLENGE PHASES</h3>
+              <h3 style={{ margin: "0 0 14px", color: "#B8D4A8", fontSize: 14, letterSpacing: "1px" }}>🗓 CHALLENGE PHASES</h3>
               {[
                 { weeks: "Weeks 1–5",   name: "Foundation", color: "#7FB069", desc: "Build the habit. Just show up." },
                 { weeks: "Weeks 6–11",  name: "Build",       color: "#E8A838", desc: "Increase your goals by 10%. Push harder." },
@@ -948,7 +948,7 @@ export default function App() {
                   }}>{weeks}</div>
                   <div>
                     <div style={{ color: "#C8E6B0", fontSize: 14, fontWeight: 600 }}>{name}</div>
-                    <div style={{ color: "#5A7A50", fontSize: 12 }}>{desc}</div>
+                    <div style={{ color: "#8AAF7A", fontSize: 12 }}>{desc}</div>
                   </div>
                 </div>
               ))}
