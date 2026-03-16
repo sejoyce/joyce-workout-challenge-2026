@@ -812,7 +812,7 @@ export default function App() {
                               />
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 60px" }}>
-                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>INCREASE</span>
+                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>INCREASE (+/-)</span>
                               <input
                                 type="text" inputMode="decimal" value={g.step}
                                 onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
