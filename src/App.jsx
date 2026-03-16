@@ -78,11 +78,12 @@ const getChallengeStatus = () => {
 // Returns the effective target for a goal given the current week
 const getEffectiveTarget = (goal, week) => {
   const phase = getPhase(week);
-  if (phase.name === "Build" && goal.buildIncrease)
-    return (parseFloat(goal.target) || 0) + (parseFloat(goal.buildIncrease) || 0);
-  if (phase.name === "Peak" && (goal.buildIncrease || goal.peakIncrease))
-    return (parseFloat(goal.target) || 0) + (parseFloat(goal.peakIncrease) || parseFloat(goal.buildIncrease) || 0);
-  return parseFloat(goal.target) || 0;
+  const base = parseFloat(goal.target) || 0;
+  const buildAdd = parseFloat(goal.buildIncrease) || 0;
+  const peakAdd = parseFloat(goal.peakIncrease) || 0;
+  if (phase.name === "Peak") return base + buildAdd + peakAdd;
+  if (phase.name === "Build") return base + buildAdd;
+  return base;
 };
 
 const allGoalsMet = (member, weekLog, week) => {
@@ -698,7 +699,7 @@ export default function App() {
                     {(m.goals || DEFAULT_GOALS()).map((g) => {
                       const unitLabel = g.unit === "custom" ? (g.customUnit || "units") : getUnitMeta(g.unit).label.toLowerCase();
                       const buildTarget = g.buildIncrease ? (parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) : null;
-                      const peakTarget = (g.buildIncrease || g.peakIncrease) ? (parseFloat(g.target) || 0) + (parseFloat(g.peakIncrease) || parseFloat(g.buildIncrease) || 0) : null;
+                      const peakTarget = (g.buildIncrease || g.peakIncrease) ? (parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) + (parseFloat(g.peakIncrease) || 0) : null;
                       return (
                         <div key={g.id} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                           <span style={{
@@ -868,7 +869,7 @@ export default function App() {
                                     Build → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0), g.unit)}
                                   </span>
                                   <span style={{ fontSize: 10, color: "#E05C5C", fontFamily: "monospace" }}>
-                                    Peak → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.peakIncrease) || parseFloat(g.buildIncrease) || 0), g.unit)}
+                                    Peak → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) + (parseFloat(g.peakIncrease) || 0), g.unit)}
                                   </span>
                                 </div>
                               )}
