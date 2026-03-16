@@ -737,7 +737,7 @@ export default function App() {
               {editingSetup && (
                 <div>
                   <p style={{ color: "#8AAF7A", fontSize: 12, margin: "0 0 16px" }}>
-                    Set each person's name, goals, units, targets, and step size. All goals must be hit to earn 5 pts.
+                    Set each person's name, goals, units, targets, and increase scale. All goals must be hit to earn 5 pts.
                   </p>
                   {setupDraft.map((m, mi) => (
                     <div key={m.id} style={{
@@ -812,7 +812,7 @@ export default function App() {
                               />
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 60px" }}>
-                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>STEP SIZE</span>
+                              <span style={{ fontSize: 10, color: "#6A9A55", letterSpacing: "0.5px" }}>INCREASE</span>
                               <input
                                 type="text" inputMode="decimal" value={g.step}
                                 onChange={(e) => updateDraftGoal(mi, gi, "step", e.target.value)}
