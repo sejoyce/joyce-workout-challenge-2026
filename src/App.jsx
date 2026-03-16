@@ -75,16 +75,26 @@ const getChallengeStatus = () => {
   return { started: true, week: weekNum, daysUntil: 0 };
 };
 
-const allGoalsMet = (member, weekLog) => {
-  if (!member.goals?.length) return false;
-  const progress = weekLog?.goalProgress || {};
-  return member.goals.every((g) => (progress[g.id] || 0) >= g.target);
+// Returns the effective target for a goal given the current week
+const getEffectiveTarget = (goal, week) => {
+  const phase = getPhase(week);
+  if (phase.name === "Build" && goal.buildIncrease)
+    return (parseFloat(goal.target) || 0) + (parseFloat(goal.buildIncrease) || 0);
+  if (phase.name === "Peak" && (goal.buildIncrease || goal.peakIncrease))
+    return (parseFloat(goal.target) || 0) + (parseFloat(goal.peakIncrease) || parseFloat(goal.buildIncrease) || 0);
+  return parseFloat(goal.target) || 0;
 };
 
-const calculatePoints = (member, weekLog) => {
+const allGoalsMet = (member, weekLog, week) => {
+  if (!member.goals?.length) return false;
+  const progress = weekLog?.goalProgress || {};
+  return member.goals.every((g) => (progress[g.id] || 0) >= getEffectiveTarget(g, week || 1));
+};
+
+const calculatePoints = (member, weekLog, week) => {
   if (!weekLog) return 0;
   let pts = 0;
-  if (allGoalsMet(member, weekLog)) pts += 5;
+  if (allGoalsMet(member, weekLog, week)) pts += 5;
   if (weekLog.buddy) pts += 2;
   return pts;
 };
@@ -111,19 +121,29 @@ const newGoalId = () => `g${Date.now()}${Math.random().toString(36).slice(2, 6)}
 // ─────────────────────────────────────────────
 //  Stepper sub-component
 // ─────────────────────────────────────────────
-const GoalStepper = ({ goal, value, onDecrement, onIncrement }) => {
-  const done = value >= goal.target;
-  const pct = Math.min(100, (value / goal.target) * 100);
+const GoalStepper = ({ goal, value, effectiveTarget, phase, onDecrement, onIncrement }) => {
+  const done = value >= effectiveTarget;
+  const pct = Math.min(100, (value / effectiveTarget) * 100);
   const unitLabel = goal.unit === "custom" ? (goal.customUnit || "units") : getUnitMeta(goal.unit).label.toLowerCase();
+  const isScaled = effectiveTarget !== (parseFloat(goal.target) || 0);
 
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-        <span style={{ fontSize: 13, color: done ? "#7FB069" : "#9DB890", fontWeight: done ? 600 : 400 }}>
-          {goal.label} {done && "✓"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 13, color: done ? "#7FB069" : "#9DB890", fontWeight: done ? 600 : 400 }}>
+            {goal.label} {done && "✓"}
+          </span>
+          {isScaled && (
+            <span style={{
+              fontSize: 10, fontFamily: "monospace", letterSpacing: "0.3px",
+              background: phase.color + "22", color: phase.color,
+              border: `1px solid ${phase.color}44`, borderRadius: 8, padding: "1px 6px",
+            }}>{phase.name}</span>
+          )}
+        </div>
         <span style={{ fontSize: 12, fontFamily: "monospace", color: done ? "#7FB069" : "#C8E6B0" }}>
-          {formatValue(value, goal.unit)} / {formatValue(goal.target, goal.unit)} {unitLabel}
+          {formatValue(value, goal.unit)} / {formatValue(effectiveTarget, goal.unit)} {unitLabel}
         </span>
       </div>
       <div style={{ background: "#0F1B0D", borderRadius: 6, height: 7, overflow: "hidden", marginBottom: 7 }}>
@@ -147,7 +167,7 @@ const GoalStepper = ({ goal, value, onDecrement, onIncrement }) => {
             ? `Done! (+${goal.step} ${unitLabel})`
             : value === 0
             ? `Log ${unitLabel}`
-            : `${formatValue(goal.target - value, goal.unit)} ${unitLabel} to go`}
+            : `${formatValue(effectiveTarget - value, goal.unit)} ${unitLabel} to go`}
         </span>
         <button onClick={onIncrement} style={{
           width: 28, height: 28, borderRadius: 6, border: "1px solid #3A6A2A",
@@ -246,10 +266,10 @@ export default function App() {
   // ── Scoring ──────────────────────────────────
   const getMemberTotal = (member) => {
     let total = 0;
-    for (let w = 1; w <= TOTAL_WEEKS; w++) total += calculatePoints(member, (logs[member.id] || {})[w]);
+    for (let w = 1; w <= TOTAL_WEEKS; w++) total += calculatePoints(member, (logs[member.id] || {})[w], w);
     return total;
   };
-  const getWeekPoints = (member, week) => calculatePoints(member, (logs[member.id] || {})[week]);
+  const getWeekPoints = (member, week) => calculatePoints(member, (logs[member.id] || {})[week], week);
   const maxPossible = TOTAL_WEEKS * 7; // 16 weeks × 7 pts max = 112
 
   const leaderboard = [...members]
@@ -479,9 +499,9 @@ export default function App() {
               {sortedMembers.map((member) => {
                 const weekLog = (logs[member.id] || {})[currentWeek] || { goalProgress: {}, buddy: false };
                 const goals = member.goals || DEFAULT_GOALS();
-                const allMet = allGoalsMet(member, weekLog);
-                const pts = calculatePoints(member, weekLog);
-                const metCount = goals.filter((g) => (weekLog.goalProgress?.[g.id] || 0) >= g.target).length;
+                const allMet = allGoalsMet(member, weekLog, currentWeek);
+                const pts = calculatePoints(member, weekLog, currentWeek);
+                const metCount = goals.filter((g) => (weekLog.goalProgress?.[g.id] || 0) >= getEffectiveTarget(g, currentWeek)).length;
 
                 return (
                   <div key={member.id} style={{
@@ -523,6 +543,8 @@ export default function App() {
                         <GoalStepper
                           key={goal.id}
                           goal={goal}
+                          effectiveTarget={getEffectiveTarget(goal, currentWeek)}
+                          phase={phase}
                           value={weekLog.goalProgress?.[goal.id] || 0}
                           onDecrement={() => updateGoalProgress(member.id, goal.id, -goal.step)}
                           onIncrement={() => updateGoalProgress(member.id, goal.id, goal.step)}
@@ -675,13 +697,35 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {(m.goals || DEFAULT_GOALS()).map((g) => {
                       const unitLabel = g.unit === "custom" ? (g.customUnit || "units") : getUnitMeta(g.unit).label.toLowerCase();
+                      const buildTarget = g.buildIncrease ? (parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0) : null;
+                      const peakTarget = (g.buildIncrease || g.peakIncrease) ? (parseFloat(g.target) || 0) + (parseFloat(g.peakIncrease) || parseFloat(g.buildIncrease) || 0) : null;
                       return (
-                        <span key={g.id} style={{
-                          background: "#2A4A1E", border: "1px solid #3A6A2A", borderRadius: 8,
-                          padding: "3px 10px", fontSize: 12, color: "#7FB069", fontFamily: "monospace",
-                        }}>
-                          {g.label}: {formatValue(g.target, g.unit)} {unitLabel}/wk
-                        </span>
+                        <div key={g.id} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                          <span style={{
+                            background: "#2A4A1E", border: "1px solid #3A6A2A", borderRadius: 8,
+                            padding: "3px 10px", fontSize: 12, color: "#7FB069", fontFamily: "monospace",
+                          }}>
+                            {g.label}: {formatValue(g.target, g.unit)} {unitLabel}/wk
+                          </span>
+                          {(buildTarget || peakTarget) && (
+                            <div style={{ display: "flex", gap: 4, paddingLeft: 4 }}>
+                              {buildTarget && (
+                                <span style={{
+                                  fontSize: 10, fontFamily: "monospace", color: "#E8A838",
+                                  background: "#E8A83822", border: "1px solid #E8A83844",
+                                  borderRadius: 6, padding: "1px 6px",
+                                }}>Build: {formatValue(buildTarget, g.unit)}</span>
+                              )}
+                              {peakTarget && (
+                                <span style={{
+                                  fontSize: 10, fontFamily: "monospace", color: "#E05C5C",
+                                  background: "#E05C5C22", border: "1px solid #E05C5C44",
+                                  borderRadius: 6, padding: "1px 6px",
+                                }}>Peak: {formatValue(peakTarget, g.unit)}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -777,6 +821,57 @@ export default function App() {
                                 }}
                                 style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center" }}
                               />
+                            </div>
+                          </div>
+
+                          {/* Row 3: phase scaling (optional) */}
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #2A3F22" }}>
+                            <div style={{ fontSize: 10, color: "#3A5A2A", letterSpacing: "0.5px", marginBottom: 6 }}>
+                              PHASE SCALING <span style={{ color: "#2A4A2A" }}>— optional</span>
+                            </div>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
+                                <span style={{ fontSize: 10, color: "#8A6820", letterSpacing: "0.3px" }}>
+                                  +BUILD INCREASE
+                                </span>
+                                <input
+                                  type="text" inputMode="decimal"
+                                  value={g.buildIncrease ?? ""}
+                                  placeholder="none"
+                                  onChange={(e) => updateDraftGoal(mi, gi, "buildIncrease", e.target.value)}
+                                  onBlur={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateDraftGoal(mi, gi, "buildIncrease", isNaN(val) || val <= 0 ? "" : val);
+                                  }}
+                                  style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center", borderColor: "#5A4A20" }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: "1 1 100px" }}>
+                                <span style={{ fontSize: 10, color: "#8A3030", letterSpacing: "0.3px" }}>
+                                  +PEAK INCREASE
+                                </span>
+                                <input
+                                  type="text" inputMode="decimal"
+                                  value={g.peakIncrease ?? ""}
+                                  placeholder="none"
+                                  onChange={(e) => updateDraftGoal(mi, gi, "peakIncrease", e.target.value)}
+                                  onBlur={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    updateDraftGoal(mi, gi, "peakIncrease", isNaN(val) || val <= 0 ? "" : val);
+                                  }}
+                                  style={{ ...inputStyle, fontSize: 13, fontFamily: "monospace", textAlign: "center", borderColor: "#5A2A2A" }}
+                                />
+                              </div>
+                              {(g.buildIncrease || g.peakIncrease) && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end", paddingBottom: 2 }}>
+                                  <span style={{ fontSize: 10, color: "#E8A838", fontFamily: "monospace" }}>
+                                    Build → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.buildIncrease) || 0), g.unit)}
+                                  </span>
+                                  <span style={{ fontSize: 10, color: "#E05C5C", fontFamily: "monospace" }}>
+                                    Peak → {formatValue((parseFloat(g.target) || 0) + (parseFloat(g.peakIncrease) || parseFloat(g.buildIncrease) || 0), g.unit)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
